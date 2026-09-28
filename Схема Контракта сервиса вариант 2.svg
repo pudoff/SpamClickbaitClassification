@@ -1,0 +1,1374 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 1500 1980"
+   font-family="'Segoe UI',Arial,sans-serif"
+   version="1.1"
+   id="svg187"
+   sodipodi:docname="Схема Контракта сервиса.svg"
+   inkscape:version="1.4.4 (dcaf3e7, 2026-05-05)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview187"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="2.1555556"
+     inkscape:cx="714.20102"
+     inkscape:cy="1182.5257"
+     inkscape:window-width="3840"
+     inkscape:window-height="2436"
+     inkscape:window-x="-12"
+     inkscape:window-y="-12"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg187" />
+  <defs
+     id="defs1">
+    <style
+       id="style1">
+.box{stroke:#2b2b2b;stroke-width:1.2}
+.h1{font:700 20px 'Segoe UI';text-anchor:middle;fill:#0e2a47}
+.h2{font:700 15px 'Segoe UI';text-anchor:middle;fill:#0e2a47}
+.lbl{font:700 13px 'Segoe UI';fill:#0e2a47;text-anchor:middle}
+.txt{font:12px 'Segoe UI';fill:#111}
+.sm{font:11px 'Segoe UI';fill:#333}
+.code{font:11px Consolas,'Courier New',monospace;fill:#111}
+.key{font:11px Consolas,'Courier New',monospace;fill:#0b5fa5;font-weight:700}
+.str{font:11px Consolas,'Courier New',monospace;fill:#1f7a1f}
+.num{font:11px Consolas,'Courier New',monospace;fill:#a05a00}
+.com{font:11px Consolas,'Courier New',monospace;fill:#777;font-style:italic}
+.arr{stroke:#0b5fa5;stroke-width:1.6;fill:none;marker-end:url(#ab)}
+</style>
+    <marker
+       id="ab"
+       markerWidth="10"
+       markerHeight="10"
+       refX="9"
+       refY="5"
+       orient="auto">
+      <path
+         d="M0,0 L10,5 L0,10 z"
+         fill="#0b5fa5"
+         id="path1" />
+    </marker>
+  </defs>
+  <!-- HEADER -->
+  <rect
+     x="20"
+     y="20"
+     width="1460"
+     height="70"
+     rx="8"
+     fill="#EAF3FB"
+     stroke="#8fbde0"
+     id="rect2" />
+  <rect
+     x="21.391153"
+     y="595.19531"
+     width="1459.3311"
+     height="195.05276"
+     rx="7.996335"
+     fill="#eaf3fb"
+     stroke="#8fbde0"
+     id="rect2-2"
+     style="stroke-width:1.66889" />
+  <rect
+     x="20.293694"
+     y="103.04625"
+     width="1458.392"
+     height="476.63937"
+     rx="7.9911885"
+     fill="#eaf3fb"
+     stroke="#8fbde0"
+     id="rect2-4"
+     style="stroke-width:2.60799" />
+  <text
+     class="h1"
+     x="750"
+     y="52"
+     id="text2"
+     style="font-style:normal;font-variant:normal;font-weight:700;font-stretch:normal;font-size:20px;line-height:normal;font-family:'Segoe UI'">КОНТРАКТ ML-СЕРВИСА</text>
+  <text
+     class="h2"
+     x="750"
+     y="76"
+     id="text3"
+     style="font-style:normal;font-variant:normal;font-weight:700;font-stretch:normal;font-size:15px;line-height:normal;font-family:'Segoe UI'">«Классификация спама и кликбейта в голосовых сообщениях»</text>
+  <!-- SUBTITLE CARDS -->
+  <g
+     id="g9"
+     transform="translate(30.154637,285.77319)">
+    <rect
+       class="box"
+       x="20"
+       y="105"
+       width="340"
+       height="120"
+       rx="6"
+       fill="#fff4d6"
+       stroke="#d9c25a"
+       id="rect3" />
+    <text
+       class="lbl"
+       x="190"
+       y="128"
+       id="text4"
+       style="font-style:normal;font-variant:normal;font-weight:700;font-stretch:normal;font-size:13px;line-height:normal;font-family:'Segoe UI'">Запрос клиента</text>
+    <text
+       class="sm"
+       x="35"
+       y="150"
+       id="text5"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:'Segoe UI'">Мобильное приложение отправляет:</text>
+    <text
+       class="sm"
+       x="35"
+       y="168"
+       id="text6"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:'Segoe UI'">• аудиофайл (multipart) или URL,</text>
+    <text
+       class="sm"
+       x="35"
+       y="184"
+       id="text7"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:'Segoe UI'">• идентификатор устройства/сессии,</text>
+    <text
+       class="sm"
+       x="35"
+       y="200"
+       id="text8"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:'Segoe UI'">• источник (telegram / whatsapp / vk / max / call)</text>
+    <text
+       class="sm"
+       x="35"
+       y="216"
+       id="text9"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:'Segoe UI'">Сервис отвечает структурированной меткой.</text>
+  </g>
+  <g
+     id="g15"
+     transform="translate(744.1237,274.63917)">
+    <rect
+       class="box"
+       x="375"
+       y="105"
+       width="340"
+       height="120"
+       rx="6"
+       fill="#e6f4ea"
+       stroke="#7bbf8a"
+       id="rect9" />
+    <text
+       class="lbl"
+       x="545"
+       y="128"
+       id="text10"
+       style="font-style:normal;font-variant:normal;font-weight:700;font-stretch:normal;font-size:13px;line-height:normal;font-family:'Segoe UI'">Успешный ответ</text>
+    <text
+       class="sm"
+       x="390"
+       y="150"
+       id="text11"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:'Segoe UI'">{ label, confidence, model_version }</text>
+    <text
+       class="sm"
+       x="390"
+       y="168"
+       id="text12"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:'Segoe UI'">label ∈ {spam, clickbait, normal},</text>
+    <text
+       class="sm"
+       x="390"
+       y="184"
+       id="text13"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:'Segoe UI'">confidence ∈ [0,1] — вероятность класса,</text>
+    <text
+       class="sm"
+       x="390"
+       y="200"
+       id="text14"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:'Segoe UI'">model_version — дата релиза NLP/Audio-модели.</text>
+    <text
+       class="sm"
+       x="390"
+       y="216"
+       id="text15"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:'Segoe UI'">Приложение показывает пользователю метку.</text>
+  </g>
+  <!-- MAIN DIAGRAM -->
+  <text
+     class="h2"
+     x="759.74225"
+     y="136.07217"
+     id="text28"
+     style="font-style:normal;font-variant:normal;font-weight:700;font-stretch:normal;font-size:15px;line-height:normal;font-family:'Segoe UI'">эндпоинт POST /api/v1/audio/classify — классификация входящего аудио</text>
+  <text
+     class="txt"
+     x="759.74225"
+     y="156.07217"
+     text-anchor="middle"
+     id="text29"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:12px;line-height:normal;font-family:'Segoe UI'">Клиент присылает голосовое сообщение из звонка/мессенджера → сервис возвращает метку класса + уверенность + версию модели.</text>
+  <!-- Request box -->
+  <rect
+     class="box"
+     x="39.634731"
+     y="176.85123"
+     width="361.246"
+     height="197.89548"
+     rx="7.4740553"
+     fill="#ffffff"
+     stroke="#0b5fa5"
+     id="rect29" />
+  <text
+     class="lbl"
+     x="192.8866"
+     y="201.85567"
+     fill="#0b5fa5"
+     id="text30"
+     style="font-style:normal;font-variant:normal;font-weight:700;font-stretch:normal;font-size:13px;line-height:normal;font-family:'Segoe UI'">ЗАПРОС (Request)</text>
+  <text
+     class="code"
+     x="62.886597"
+     y="224.85567"
+     id="text31"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+   class="key"
+   id="tspan30"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">Content-Type:</tspan> multipart/form-data</text>
+  <text
+     class="code"
+     x="62.886597"
+     y="242.85567"
+     id="text32"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+       class="key"
+       id="tspan31"
+       style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">audio_file</tspan><tspan
+       class="com"
+       id="tspan32"
+       style="font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">// binary, ≤ 60 сек, opus/wav/mp3/m4a</tspan></text>
+  <text
+     class="code"
+     x="62.886597"
+     y="260.85568"
+     id="text34"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+       class="key"
+       id="tspan33"
+       style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">client_id</tspan><tspan
+       class="com"
+       id="tspan34"
+       style="font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">// UUID устройства (anon, без PII)</tspan></text>
+  <text
+     class="code"
+     x="62.886597"
+     y="278.85568"
+     id="text36"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+       class="key"
+       id="tspan35"
+       style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">session_id</tspan><tspan
+       class="com"
+       id="tspan36"
+       style="font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">// UUID одной сессии вызова</tspan></text>
+  <text
+     class="code"
+     x="62.886597"
+     y="296.85568"
+     id="text40"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+   class="key"
+   id="tspan37"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">source</tspan><tspan
+   class="str"
+   id="tspan38"
+   style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">&quot;call&quot;</tspan>|<tspan
+   class="str"
+   id="tspan39"
+   style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">&quot;telegram&quot;</tspan>|<tspan
+   class="str"
+   id="tspan40"
+   style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">&quot;whatsapp&quot;</tspan>|...</text>
+  <text
+     class="code"
+     x="62.886597"
+     y="314.85568"
+     id="text42"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+   class="key"
+   id="tspan41"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">lang_hint</tspan>? <tspan
+   class="com"
+   id="tspan42"
+   style="font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">// опционально: ru/en/kk/…</tspan></text>
+  <text
+     class="code"
+     x="62.886597"
+     y="332.85568"
+     id="text45"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+   class="key"
+   id="tspan43"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">consent_flag</tspan>: <tspan
+   class="num"
+   id="tspan44"
+   style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">true</tspan><tspan
+   class="com"
+   id="tspan45"
+   style="font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">// согласие на обработку</tspan></text>
+  <text
+     class="code"
+     x="62.886597"
+     y="350.85568"
+     id="text47"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+       class="key"
+       id="tspan46"
+       style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">device_model?</tspan><tspan
+       class="com"
+       id="tspan47"
+       style="font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">// для мониторинга ресурсов)</tspan></text>
+  <!-- Arrow to service -->
+  <line
+     class="arr"
+     x1="473.71133"
+     y1="261.64951"
+     x2="553.71136"
+     y2="261.64951"
+     id="line47" />
+  <text
+     class="sm"
+     x="513.71136"
+     y="251.64951"
+     text-anchor="middle"
+     id="text48"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:'Segoe UI'">HTTP POST</text>
+  <!-- Service box -->
+  <rect
+     class="box"
+     x="631.08246"
+     y="191.18556"
+     width="270"
+     height="140"
+     rx="6"
+     fill="#eaf3fb"
+     stroke="#0b5fa5"
+     id="rect48"
+     style="fill:none" />
+  <text
+     class="lbl"
+     x="759.58759"
+     y="208.61858"
+     fill="#0b5fa5"
+     id="text49"
+     style="font-style:normal;font-variant:normal;font-weight:700;font-stretch:normal;font-size:13px;line-height:normal;font-family:'Segoe UI'">Сервис классификации</text>
+  <text
+     class="sm"
+     x="759.58759"
+     y="228.61858"
+     text-anchor="middle"
+     id="text50"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:'Segoe UI'">(Audio Classifier MaaS)</text>
+  <text
+     class="sm"
+     x="639.58759"
+     y="250.61858"
+     id="text51"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:'Segoe UI'">1. Валидация запроса (schema, consent)</text>
+  <text
+     class="sm"
+     x="639.58759"
+     y="268.61856"
+     id="text52"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:'Segoe UI'">2. Предобработка: VAD, шумоподавление,</text>
+  <text
+     class="sm"
+     x="654.58759"
+     y="284.61856"
+     id="text53"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:'Segoe UI'">нормализация громкости, мел-спектрограмма</text>
+  <text
+     class="sm"
+     x="639.58759"
+     y="302.61856"
+     id="text54"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:'Segoe UI'">3. Инференс CNN/Wav2Vec2 → softmax(3)</text>
+  <text
+     class="sm"
+     x="639.58759"
+     y="318.61856"
+     id="text55"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:'Segoe UI'">4. Формирование структурированного ответа</text>
+  <!-- Arrow to Response -->
+  <line
+     class="arr"
+     x1="965.46393"
+     y1="252.37115"
+     x2="1045.464"
+     y2="252.37115"
+     id="line55" />
+  <text
+     class="sm"
+     x="1005.4639"
+     y="242.37115"
+     text-anchor="middle"
+     id="text56"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:'Segoe UI'">JSON 200 OK</text>
+  <!-- Response box -->
+  <rect
+     class="box"
+     x="1123.8019"
+     y="176.79153"
+     width="330.7468"
+     height="178.99422"
+     rx="6.8430371"
+     fill="#ffffff"
+     stroke="#1f7a1f"
+     id="rect56" />
+  <text
+     class="lbl"
+     x="1265.0515"
+     y="193.04123"
+     fill="#1f7a1f"
+     id="text57"
+     style="font-style:normal;font-variant:normal;font-weight:700;font-stretch:normal;font-size:13px;line-height:normal;font-family:'Segoe UI'">ОТВЕТ (Response)</text>
+  <text
+     class="code"
+     x="1135.0515"
+     y="216.04123"
+     id="text60"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+   class="key"
+   id="tspan57"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">label</tspan>: <tspan
+   class="str"
+   id="tspan58"
+   style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">&quot;spam&quot;</tspan>|<tspan
+   class="str"
+   id="tspan59"
+   style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">&quot;clickbait&quot;</tspan>|<tspan
+   class="str"
+   id="tspan60"
+   style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">&quot;normal&quot;</tspan></text>
+  <text
+     class="code"
+     x="1135.0515"
+     y="234.04123"
+     id="text63"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+   class="key"
+   id="tspan61"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">confidence</tspan>: <tspan
+   class="num"
+   id="tspan62"
+   style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">0.94</tspan><tspan
+   class="com"
+   id="tspan63"
+   style="font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">// float ∈ [0,1]</tspan></text>
+  <text
+     class="code"
+     x="1135.0515"
+     y="252.04123"
+     id="text65"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+   class="key"
+   id="tspan64"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">scores</tspan>: { spam, clickbait, normal } <tspan
+   class="com"
+   id="tspan65"
+   style="font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">// all probs</tspan></text>
+  <text
+     class="code"
+     x="1135.0515"
+     y="270.04123"
+     id="text67"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+   class="key"
+   id="tspan66"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">model_version</tspan>: <tspan
+   class="str"
+   id="tspan67"
+   style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">&quot;2026-09-15-audio-v3-q8&quot;</tspan></text>
+  <text
+     class="code"
+     x="1135.0515"
+     y="288.04123"
+     id="text70"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+   class="key"
+   id="tspan68"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">processed_ms</tspan>: <tspan
+   class="num"
+   id="tspan69"
+   style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">180</tspan><tspan
+   class="com"
+   id="tspan70"
+   style="font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">// observability</tspan></text>
+  <text
+     class="code"
+     x="1135.0515"
+     y="306.04123"
+     id="text73"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+   class="key"
+   id="tspan71"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">needs_review</tspan>: <tspan
+   class="num"
+   id="tspan72"
+   style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">false</tspan><tspan
+   class="com"
+   id="tspan73"
+   style="font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">// low-conf → human-in-the-loop</tspan></text>
+  <text
+     class="code"
+     x="1135.0515"
+     y="324.04123"
+     id="text76"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+   class="key"
+   id="tspan74"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">request_id</tspan>: <tspan
+   class="str"
+   id="tspan75"
+   style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">&quot;req_...&quot;</tspan><tspan
+   class="com"
+   id="tspan76"
+   style="font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">// trace-id для логов</tspan></text>
+  <text
+     class="code"
+     x="1135.0515"
+     y="342.04123"
+     id="text77"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+       class="com"
+       id="tspan77"
+       style="font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">// HTTP status: 200 | 400 | 401 | 413 | 422 | 503</tspan></text>
+  <!-- Side notes under diagram -->
+  <text
+     class="lbl"
+     x="1072.0619"
+     y="637.26807"
+     fill="#a83a72"
+     id="text78"
+     style="font-style:normal;font-variant:normal;font-weight:700;font-stretch:normal;font-size:13px;line-height:normal;font-family:'Segoe UI'">Правила обновления контракта</text>
+  <text
+     class="sm"
+     x="907.06183"
+     y="657.26807"
+     id="text79"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:'Segoe UI'">1. API изменилось → новая функция (новые поля/типы)</text>
+  <text
+     class="sm"
+     x="907.06183"
+     y="674.26807"
+     id="text80"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:'Segoe UI'">→ MAJOR bump (v2). Старые клиенты продолжают работать с v1.</text>
+  <text
+     class="sm"
+     x="907.06183"
+     y="691.26807"
+     id="text81"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:'Segoe UI'">2. Добавлено необязательное поле или уточнена документация</text>
+  <text
+     class="sm"
+     x="907.06183"
+     y="708.26807"
+     id="text82"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:'Segoe UI'">→ MINOR bump (v1.1). Обратная совместимость сохраняется.</text>
+  <text
+     class="sm"
+     x="907.52576"
+     y="728.05157"
+     id="text83"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:'Segoe UI'">3. Изменение только внутри модели (переобучение, квантизация)</text>
+  <text
+     class="sm"
+     x="907.06183"
+     y="742.26807"
+     id="text84"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:'Segoe UI'">→ НЕ трогает контракт, меняется лишь model_version в ответе.</text>
+  <text
+     class="lbl"
+     x="500.87625"
+     y="636.80414"
+     fill="#0b5fa5"
+     id="text85"
+     style="font-style:normal;font-variant:normal;font-weight:700;font-stretch:normal;font-size:13px;line-height:normal;font-family:'Segoe UI'">Контракт</text>
+  <text
+     class="sm"
+     x="376.70108"
+     y="654.94836"
+     id="text86"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:'Segoe UI'">GET /fraud/check?txn=… → { risk_score, action, model_ver }</text>
+  <text
+     class="sm"
+     x="376.70108"
+     y="671.94836"
+     id="text87"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:'Segoe UI'">SLA: p99 150 мс, 99.9% uptime.</text>
+  <text
+     class="lbl"
+     x="789.63916"
+     y="823.29889"
+     fill="#0b5fa5"
+     id="text90"
+     style="font-style:normal;font-variant:normal;font-weight:700;font-stretch:normal;font-size:13px;line-height:normal;font-family:'Segoe UI'">OpenAPI-спецификация (Swagger)</text>
+  <!-- OPENAPI REQUEST PANEL -->
+  <rect
+     x="277.9556"
+     y="845.12054"
+     width="479.96515"
+     height="685.42908"
+     rx="5.9995646"
+     fill="#fdfeff"
+     stroke="#8fbde0"
+     id="rect94"
+     style="stroke-width:1.03485" />
+  <text
+     class="lbl"
+     x="517.93817"
+     y="867.10315"
+     fill="#0b5fa5"
+     id="text95"
+     style="font-style:normal;font-variant:normal;font-weight:700;font-stretch:normal;font-size:13px;line-height:normal;font-family:'Segoe UI'">OPENAPI · ЗАПРОС (requestBody)</text>
+  <g
+     transform="translate(292.93815,885.10311)"
+     id="g141">
+    <text
+       class="code"
+       y="0"
+       id="text96"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+         class="key"
+         id="tspan95"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">openapi:</tspan><tspan
+         class="str"
+         id="tspan96"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">&quot;3.1.0&quot;</tspan></text>
+    <text
+       class="code"
+       y="18"
+       id="text97"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+         class="key"
+         id="tspan97"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">info:</tspan></text>
+    <text
+       class="code"
+       y="36"
+       id="text99"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+         class="key"
+         id="tspan98"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">title:</tspan><tspan
+         class="str"
+         id="tspan99"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">Spam/Clickbait Audio Classifier</tspan></text>
+    <text
+       class="code"
+       y="54"
+       id="text101"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+         class="key"
+         id="tspan100"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">version:</tspan><tspan
+         class="str"
+         id="tspan101"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">&quot;1.0.0&quot;</tspan></text>
+    <text
+       class="code"
+       y="72"
+       id="text102"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+         class="key"
+         id="tspan102"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">paths:</tspan></text>
+    <text
+       class="code"
+       y="90"
+       id="text103"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+         class="key"
+         id="tspan103"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">/api/v1/audio/classify:</tspan></text>
+    <text
+       class="code"
+       y="108"
+       id="text104"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+         class="key"
+         id="tspan104"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">post:</tspan></text>
+    <text
+       class="code"
+       y="126"
+       id="text106"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+         class="key"
+         id="tspan105"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">summary:</tspan><tspan
+         class="str"
+         id="tspan106"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">Classify incoming voice message</tspan></text>
+    <text
+       class="code"
+       y="144"
+       id="text107"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+   class="key"
+   id="tspan107"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">operationId:</tspan> classifyAudio</text>
+    <text
+       class="code"
+       y="162"
+       id="text110"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+   class="key"
+   id="tspan108"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">tags:</tspan> [<tspan
+   class="str"
+   id="tspan109"
+   style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">inference</tspan>, <tspan
+   class="str"
+   id="tspan110"
+   style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">anti-spam</tspan>]</text>
+    <text
+       class="code"
+       y="180"
+       id="text111"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+   class="key"
+   id="tspan111"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">security:</tspan> [ { bearerAuth: [] } ]</text>
+    <text
+       class="code"
+       y="198"
+       id="text112"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+         class="key"
+         id="tspan112"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">requestBody:</tspan></text>
+    <text
+       class="code"
+       y="216"
+       id="text114"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+         class="key"
+         id="tspan113"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">required:</tspan><tspan
+         class="num"
+         id="tspan114"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">true</tspan></text>
+    <text
+       class="code"
+       y="234"
+       id="text115"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+         class="key"
+         id="tspan115"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">content:</tspan></text>
+    <text
+       class="code"
+       y="252"
+       id="text116"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+         class="key"
+         id="tspan116"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">multipart/form-data:</tspan></text>
+    <text
+       class="code"
+       y="270"
+       id="text117"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+         class="key"
+         id="tspan117"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">schema:</tspan></text>
+    <text
+       class="code"
+       y="288"
+       id="text118"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+   class="key"
+   id="tspan118"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">type:</tspan> object</text>
+    <text
+       class="code"
+       y="306"
+       id="text119"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+   class="key"
+   id="tspan119"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">required:</tspan> [audio_file, client_id,</text>
+    <text
+       class="code"
+       y="324"
+       id="text120"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">session_id, source, consent_flag]</text>
+    <text
+       class="code"
+       y="342"
+       id="text121"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+         class="key"
+         id="tspan120"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">properties:</tspan></text>
+    <text
+       class="code"
+       y="360"
+       id="text122"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+         class="key"
+         id="tspan121"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">audio_file:</tspan></text>
+    <text
+       class="code"
+       y="378"
+       id="text123"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+   class="key"
+   id="tspan122"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">type:</tspan> string</text>
+    <text
+       class="code"
+       y="396"
+       id="text124"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+   class="key"
+   id="tspan123"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">format:</tspan> binary</text>
+    <text
+       class="code"
+       y="414"
+       id="text125"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+         class="key"
+         id="tspan124"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">description:</tspan><tspan
+         class="str"
+         id="tspan125"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">Voice msg ≤ 60 s</tspan></text>
+    <text
+       class="code"
+       y="432"
+       id="text126"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+         class="key"
+         id="tspan126"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">client_id:</tspan></text>
+    <text
+       class="code"
+       y="450"
+       id="text128"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+   class="key"
+   id="tspan127"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">type:</tspan> string, <tspan
+   class="key"
+   id="tspan128"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">format:</tspan> uuid</text>
+    <text
+       class="code"
+       y="468"
+       id="text129"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+   class="key"
+   id="tspan129"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">example:</tspan> a1b2c3d4-e5f6-7890-abcd-</text>
+    <text
+       class="code"
+       y="486"
+       id="text130"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">ef1234567890</text>
+    <text
+       class="code"
+       y="504"
+       id="text131"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+         class="key"
+         id="tspan130"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">session_id:</tspan></text>
+    <text
+       class="code"
+       y="522"
+       id="text132"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+   class="key"
+   id="tspan131"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">type:</tspan> string, <tspan
+   class="key"
+   id="tspan132"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">format:</tspan> uuid</text>
+    <text
+       class="code"
+       y="540"
+       id="text133"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+         class="key"
+         id="tspan133"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">source:</tspan></text>
+    <text
+       class="code"
+       y="558"
+       id="text134"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+   class="key"
+   id="tspan134"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">enum:</tspan> [call, telegram, whatsapp,</text>
+    <text
+       class="code"
+       y="576"
+       id="text135"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">vk, max, other]</text>
+    <text
+       class="code"
+       y="594"
+       id="text136"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+         class="key"
+         id="tspan135"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">lang_hint:</tspan><tspan
+         class="com"
+         id="tspan136"
+         style="font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"># optional ISO-639-1</tspan></text>
+    <text
+       class="code"
+       y="612"
+       id="text139"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+   class="key"
+   id="tspan137"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">type:</tspan> string, <tspan
+   class="key"
+   id="tspan138"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">maxLength:</tspan><tspan
+   class="num"
+   id="tspan139"
+   style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">2</tspan></text>
+    <text
+       class="code"
+       y="630"
+       id="text141"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+   class="key"
+   id="tspan140"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">consent_flag:</tspan><tspan
+   class="key"
+   id="tspan141"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">type:</tspan> boolean</text>
+  </g>
+  <!-- OPENAPI RESPONSES PANEL -->
+  <rect
+     x="842.62885"
+     y="847.42273"
+     width="480"
+     height="640"
+     rx="6"
+     fill="#fdfeff"
+     stroke="#7bbf8a"
+     id="rect141" />
+  <text
+     class="lbl"
+     x="1083.5568"
+     y="870.35059"
+     fill="#1f7a1f"
+     id="text142"
+     style="font-style:normal;font-variant:normal;font-weight:700;font-stretch:normal;font-size:13px;line-height:normal;font-family:'Segoe UI'">OPENAPI · ОТВЕТЫ (responses)</text>
+  <g
+     transform="translate(992.62887,949.1237)"
+     id="g183">
+    <text
+       class="code"
+       y="-64.948456"
+       id="text143"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-125.25773"><tspan
+         class="key"
+         id="tspan142"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">responses:</tspan></text>
+    <text
+       class="code"
+       y="-50.195873"
+       id="text144"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-126.64948"><tspan
+         class="key"
+         id="tspan143"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">'200':</tspan></text>
+    <text
+       class="code"
+       y="-34.515461"
+       id="text145"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-127.1134"><tspan
+         class="key"
+         id="tspan144"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">description:</tspan><tspan
+         class="str"
+         id="tspan145"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">Успешная классификация</tspan></text>
+    <text
+       class="code"
+       y="-18.371132"
+       id="text146"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-126.64948"><tspan
+         class="key"
+         id="tspan146"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">content:</tspan></text>
+    <text
+       class="code"
+       y="-0.37113255"
+       id="text147"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-126.64948"><tspan
+         class="key"
+         id="tspan147"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">application/json:</tspan></text>
+    <text
+       class="code"
+       y="17.628868"
+       id="text148"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-126.64948"><tspan
+         class="key"
+         id="tspan148"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">schema:</tspan></text>
+    <text
+       class="code"
+       y="35.628868"
+       id="text149"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-126.64948"><tspan
+   class="key"
+   id="tspan149"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">type:</tspan> object</text>
+    <text
+       class="code"
+       y="53.628868"
+       id="text150"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-126.64948"><tspan
+         class="key"
+         id="tspan150"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">properties:</tspan></text>
+    <text
+       class="code"
+       y="71.628868"
+       id="text151"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-126.64948"><tspan
+         class="key"
+         id="tspan151"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">label:</tspan></text>
+    <text
+       class="code"
+       y="89.628868"
+       id="text152"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-126.64948"><tspan
+   class="key"
+   id="tspan152"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">enum:</tspan> [spam, clickbait, normal]</text>
+    <text
+       class="code"
+       y="107.62887"
+       id="text153"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-126.64948"><tspan
+         class="key"
+         id="tspan153"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">confidence:</tspan></text>
+    <text
+       class="code"
+       y="125.62887"
+       id="text156"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-126.64948"><tspan
+   class="key"
+   id="tspan154"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">type:</tspan> number, <tspan
+   class="key"
+   id="tspan155"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">minimum:</tspan><tspan
+   class="num"
+   id="tspan156"
+   style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">0</tspan>,</text>
+    <text
+       class="code"
+       y="143.62886"
+       id="text160"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-126.64948"><tspan
+   class="key"
+   id="tspan157"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">maximum:</tspan><tspan
+   class="num"
+   id="tspan158"
+   style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">1</tspan>, <tspan
+   class="key"
+   id="tspan159"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">example:</tspan><tspan
+   class="num"
+   id="tspan160"
+   style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">0.94</tspan></text>
+    <text
+       class="code"
+       y="161.62886"
+       id="text161"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-126.64948"><tspan
+         class="key"
+         id="tspan161"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">scores:</tspan></text>
+    <text
+       class="code"
+       y="179.62886"
+       id="text162"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-126.64948"><tspan
+   class="key"
+   id="tspan162"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">type:</tspan> object</text>
+    <text
+       class="code"
+       y="197.62886"
+       id="text163"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-126.64948"><tspan
+         class="key"
+         id="tspan163"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">additionalProperties:</tspan></text>
+    <text
+       class="code"
+       y="215.62886"
+       id="text164"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-126.64948"><tspan
+   class="key"
+   id="tspan164"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">type:</tspan> number</text>
+    <text
+       class="code"
+       y="233.62886"
+       id="text165"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-126.64948"><tspan
+         class="key"
+         id="tspan165"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">model_version:</tspan></text>
+    <text
+       class="code"
+       y="251.62886"
+       id="text166"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-126.64948"><tspan
+   class="key"
+   id="tspan166"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">type:</tspan> string</text>
+    <text
+       class="code"
+       y="269.62888"
+       id="text168"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-126.64948"><tspan
+         class="key"
+         id="tspan167"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">example:</tspan><tspan
+         class="str"
+         id="tspan168"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">&quot;2026-09-15-audio-v3-q8&quot;</tspan></text>
+    <text
+       class="code"
+       y="287.62888"
+       id="text170"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-126.64948"><tspan
+   class="key"
+   id="tspan169"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">processed_ms:</tspan><tspan
+   class="key"
+   id="tspan170"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">type:</tspan> integer</text>
+    <text
+       class="code"
+       y="305.62888"
+       id="text172"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-126.64948"><tspan
+   class="key"
+   id="tspan171"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">needs_review:</tspan><tspan
+   class="key"
+   id="tspan172"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">type:</tspan> boolean</text>
+    <text
+       class="code"
+       y="323.62888"
+       id="text174"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-126.64948"><tspan
+   class="key"
+   id="tspan173"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">request_id:</tspan><tspan
+   class="key"
+   id="tspan174"
+   style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">type:</tspan> string</text>
+    <text
+       class="code"
+       y="341.62888"
+       id="text176"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-126.64948"><tspan
+         class="key"
+         id="tspan175"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">'400':</tspan><tspan
+         class="com"
+         id="tspan176"
+         style="font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"># Bad request (schema/validation)</tspan></text>
+    <text
+       class="code"
+       y="359.62888"
+       id="text178"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-126.64948"><tspan
+         class="key"
+         id="tspan177"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">'401':</tspan><tspan
+         class="com"
+         id="tspan178"
+         style="font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"># Unauthorized device token</tspan></text>
+    <text
+       class="code"
+       y="377.62888"
+       id="text180"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-126.64948"><tspan
+         class="key"
+         id="tspan179"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">'413':</tspan><tspan
+         class="com"
+         id="tspan180"
+         style="font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"># Payload too large ( 60 s / 5 MB)</tspan></text>
+    <text
+       class="code"
+       y="395.62888"
+       id="text182"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-126.64948"><tspan
+         class="key"
+         id="tspan181"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">'422':</tspan><tspan
+         class="com"
+         id="tspan182"
+         style="font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"># Unprocessable: unsupported codec,</tspan></text>
+    <text
+       class="code"
+       y="-260.66217"
+       id="text176-4"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace;fill:#111111"
+       x="-617.29822"><tspan
+         class="key"
+         id="tspan175-2"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">'400':</tspan><tspan
+         class="com"
+         id="tspan176-3"
+         style="font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"># Bad request (schema/validation)</tspan></text>
+    <text
+       class="code"
+       y="-244.51785"
+       id="text178-2"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace;fill:#111111"
+       x="-618.22607"><tspan
+         class="key"
+         id="tspan177-2"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">'401':</tspan><tspan
+         class="com"
+         id="tspan178-1"
+         style="font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"># Unauthorized device token</tspan></text>
+    <text
+       class="code"
+       y="-229.30135"
+       id="text180-6"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace;fill:#111111"
+       x="-616.83429"><tspan
+         class="key"
+         id="tspan179-8"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">'413':</tspan><tspan
+         class="com"
+         id="tspan180-5"
+         style="font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"># Payload too large ( 60 s / 5 MB)</tspan></text>
+    <text
+       class="code"
+       y="-213.15703"
+       id="text182-7"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace;fill:#111111"
+       x="-619.15387"><tspan
+         class="key"
+         id="tspan181-6"
+         style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">'422':</tspan><tspan
+         class="com"
+         id="tspan182-1"
+         style="font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"># Unprocessable: unsupported codec,</tspan></text>
+    <text
+       class="code"
+       y="447.03091"
+       id="text183"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"
+       x="-119.2268">silence-only, consent missing</text>
+  </g>
+  <text
+     class="code"
+     y="1360.8558"
+     id="text184"
+     x="867.52582"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+       class="key"
+       id="tspan183"
+       style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">'429':</tspan><tspan
+       class="com"
+       id="tspan184"
+       style="font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"># Rate limit exceeded per client_id</tspan></text>
+  <text
+     class="code"
+     y="1377.928"
+     id="text186"
+     x="867.06189"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"><tspan
+       class="key"
+       id="tspan185"
+       style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">'503':</tspan><tspan
+       class="com"
+       id="tspan186"
+       style="font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"># Upstream model unavailable;</tspan></text>
+  <text
+     class="code"
+     y="750.8703"
+     id="text184-7"
+     x="374.84613"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace;fill:#111111"><tspan
+       class="key"
+       id="tspan183-1"
+       style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">'429':</tspan><tspan
+       class="com"
+       id="tspan184-1"
+       style="font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"># Rate limit exceeded per client_id</tspan></text>
+  <text
+     class="code"
+     y="766.08679"
+     id="text186-5"
+     x="376.70178"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace;fill:#111111"><tspan
+       class="key"
+       id="tspan185-2"
+       style="font-style:normal;font-variant:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace">'503':</tspan><tspan
+       class="com"
+       id="tspan186-7"
+       style="font-variant:normal;font-weight:normal;font-stretch:normal;font-size:11px;line-height:normal;font-family:Consolas, 'Courier New', monospace"># Upstream model unavailable;</tspan></text>
+</svg>
