@@ -1,0 +1,669 @@
+openapi: 3.1.0
+info:
+  title: Voice Spam & Clickbait Inference API
+  version: 2.0.0
+  summary: Внутренний сервис инференса Telegram-бота — классификация голосового сообщения на spam / clickbait / normal с явным статусом отказа.
+  description: |
+    Контракт между процессами `bot` (aiogram) и `inference-api` (FastAPI) на сервере проекта (prod) и в локальном Docker (dev).
+    Проект кейса 4 курса NLP «Классификация спама и кликбейта в голосовых сообщениях Telegram».
+    Статус: проект для согласования (версия 2.0 от 01.10.2026). Версия 1.0 (публичный API для Android) отменена.
+
+    Сервис не хранит данных: аудио обрабатывается во временном файле и удаляется после ответа.
+    Пользователи, согласия, история, отзывы и удаление — ответственность бота (`03-final-architecture.md` §2.1, §6).
+
+    Конвейер: FFmpeg → Silero VAD → определение языка (faster-whisper `base`) → GigaAM-v3 `v3_e2e_rnnt`
+    по сегментам ≤ 20 с → нормализация `clean_text` → TF-IDF + LogisticRegression с калибровкой → политика решения.
+
+    Версионирование:
+    - **Версия API** — мажорная часть в пути (`/v1`), полная semver — в `info.version`.
+      MAJOR: удаление или переименование полей, новые значения в закрытых перечислениях (`label`, `status`, `reason`),
+      изменение семантики. MINOR: новые необязательные поля и эндпоинты. PATCH: только документация.
+      Клиент игнорирует неизвестные поля ответа.
+      Переход с 1.0.0 на 2.0.0 — MAJOR: сменились назначение сервиса и аутентификация, удалены эндпоинты установки, отзывов и удаления.
+    - **Версии моделей** не связаны с версией API и возвращаются в каждом ответе (`models`).
+
+    Обработка синхронная: один файл — один ответ. Ни сбой, ни тишина, ни другой язык, ни низкая уверенность
+    не превращаются в метку `normal`.
+
+    Повторы на стороне бота: только при сетевых ошибках, 500 и 503; не больше 2 повторов, пауза не меньше `Retry-After`.
+servers:
+  - url: http://inference-api:8000
+    description: Адрес внутри сети Docker Compose.
+  - url: http://127.0.0.1:8000
+    description: Swagger UI — локально в dev; на сервере только через SSH-туннель.
+security:
+  - apiKey: []
+tags:
+  - name: classifications
+    description: Классификация голосового сообщения.
+  - name: service
+    description: Параметры сервиса и проверка готовности.
+paths:
+  /v1/classifications:
+    post:
+      tags: [classifications]
+      operationId: createClassification
+      summary: Классифицировать голосовое сообщение
+      description: |
+        Порядок проверок: ключ → размер (413) → формат и кодек по содержимому (415) → декодирование и длительность (422)
+        → VAD → язык → ASR → классификация → политика решения.
+
+        Отсутствие речи, слишком короткая речь, неподдерживаемый язык и низкая уверенность —
+        это **успешный** ответ 200 со статусом `not_classified` или `uncertain` и `label: null`.
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ClassificationRequest'
+            encoding:
+              audio:
+                contentType: audio/ogg, audio/opus, audio/mp4, audio/x-m4a, audio/aac, audio/mpeg, audio/wav, audio/x-wav, application/octet-stream
+      responses:
+        '200':
+          description: Обработка завершена. Смотрите `status`.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/X-Request-Id'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Classification'
+              examples:
+                classifiedSpam:
+                  summary: Уверенная классификация как спам
+                  value:
+                    request_id: upd-81234567-1
+                    status: classified
+                    label: spam
+                    reason: null
+                    confidence: 0.94
+                    scores:
+                      spam: 0.94
+                      clickbait: 0.04
+                      normal: 0.02
+                    detected_language: ru
+                    audio_duration_s: 18.4
+                    speech_duration_s: 15.9
+                    transcript: Здравствуйте! Вам одобрен кредит на 300 000 рублей, перезвоните по номеру…
+                    models:
+                      asr_model: gigaam-v3-e2e-rnnt@1
+                      lid_model: faster-whisper-base@1
+                      classifier_model: tfidf-logreg@1
+                      decision_policy: policy@1
+                    timings_ms:
+                      decode: 90
+                      vad: 140
+                      lid: 610
+                      asr: 2480
+                      classify: 6
+                      total: 3360
+                uncertain:
+                  summary: Речь распознана, уверенность ниже порога
+                  value:
+                    request_id: upd-81234570-1
+                    status: uncertain
+                    label: null
+                    reason: low_confidence
+                    confidence: 0.48
+                    scores:
+                      spam: 0.31
+                      clickbait: 0.48
+                      normal: 0.21
+                    detected_language: ru
+                    audio_duration_s: 9.2
+                    speech_duration_s: 7.8
+                    transcript: Слушай, тут такое дело, потом расскажу…
+                    models:
+                      asr_model: gigaam-v3-e2e-rnnt@1
+                      lid_model: faster-whisper-base@1
+                      classifier_model: tfidf-logreg@1
+                      decision_policy: policy@1
+                    timings_ms:
+                      decode: 60
+                      vad: 80
+                      lid: 420
+                      asr: 1310
+                      classify: 5
+                      total: 1890
+                notClassifiedNoSpeech:
+                  summary: В записи нет речи — метка не ставится
+                  value:
+                    request_id: upd-81234575-1
+                    status: not_classified
+                    label: null
+                    reason: no_speech
+                    confidence: null
+                    scores: null
+                    detected_language: null
+                    audio_duration_s: 6.0
+                    speech_duration_s: 0.0
+                    transcript: null
+                    models:
+                      asr_model: gigaam-v3-e2e-rnnt@1
+                      lid_model: faster-whisper-base@1
+                      classifier_model: tfidf-logreg@1
+                      decision_policy: policy@1
+                    timings_ms:
+                      decode: 50
+                      vad: 70
+                      lid: 0
+                      asr: 0
+                      classify: 0
+                      total: 130
+                notClassifiedLanguage:
+                  summary: Язык не поддерживается — метка не ставится
+                  value:
+                    request_id: upd-81234580-1
+                    status: not_classified
+                    label: null
+                    reason: unsupported_language
+                    confidence: null
+                    scores: null
+                    detected_language: en
+                    audio_duration_s: 12.0
+                    speech_duration_s: 10.6
+                    transcript: null
+                    models:
+                      asr_model: gigaam-v3-e2e-rnnt@1
+                      lid_model: faster-whisper-base@1
+                      classifier_model: tfidf-logreg@1
+                      decision_policy: policy@1
+                    timings_ms:
+                      decode: 70
+                      vad: 110
+                      lid: 560
+                      asr: 0
+                      classify: 0
+                      total: 750
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/UnprocessableAudio'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /v1/service-info:
+    get:
+      tags: [service]
+      operationId: getServiceInfo
+      summary: Поддерживаемые языки, форматы, лимиты и текущие версии моделей
+      responses:
+        '200':
+          description: Текущие параметры сервиса.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceInfo'
+              examples:
+                current:
+                  value:
+                    api_version: 2.0.0
+                    supported_languages: [ru]
+                    supported_formats: [ogg_opus, m4a_aac, mp3, wav_pcm]
+                    limits:
+                      max_file_bytes: 20971520
+                      max_audio_duration_s: 300
+                      min_speech_duration_s: 1.0
+                      max_concurrent_requests: 2
+                    policy:
+                      tau: 0.55
+                      tau_spam: 0.65
+                      lang_threshold: 0.7
+                    models:
+                      asr_model: gigaam-v3-e2e-rnnt@1
+                      lid_model: faster-whisper-base@1
+                      classifier_model: tfidf-logreg@1
+                      decision_policy: policy@1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/health:
+    get:
+      tags: [service]
+      operationId: getHealth
+      summary: Проверка готовности (модели загружены)
+      security: []
+      responses:
+        '200':
+          description: Сервис готов.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+              examples:
+                ok:
+                  value:
+                    status: ok
+        '503':
+          description: Сервис не готов (модели загружаются или не прошли проверку контрольной суммы).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+              examples:
+                loading:
+                  value:
+                    status: unavailable
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Общий секрет бота и сервиса из `.env`. Сервис доступен только во внутренней сети Compose и на 127.0.0.1.
+  parameters:
+    XRequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      description: Идентификатор для трассировки; бот передаёт `upd-<update_id>-<попытка>`. Если не передан, сервис генерирует свой.
+      schema:
+        type: string
+        maxLength: 64
+        pattern: '^[A-Za-z0-9._-]+$'
+  headers:
+    X-Request-Id:
+      description: Идентификатор запроса; совпадает с `request_id` в теле.
+      schema:
+        type: string
+    Retry-After:
+      description: Через сколько секунд можно повторить запрос.
+      schema:
+        type: integer
+        minimum: 1
+  responses:
+    BadRequest:
+      description: Некорректный запрос (нет поля `audio`, лишние поля).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            missingAudio:
+              value:
+                type: about:blank
+                title: Invalid request
+                status: 400
+                code: invalid_request
+                detail: Field 'audio' is required.
+                request_id: upd-81234590-1
+    Unauthorized:
+      description: Нет или неверен `X-API-Key`.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            badKey:
+              value:
+                type: about:blank
+                title: Unauthorized
+                status: 401
+                code: unauthorized
+                request_id: srv-7f3a9c
+    PayloadTooLarge:
+      description: Файл больше 20 МБ (лимит скачивания Bot API).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            tooLarge:
+              value:
+                type: about:blank
+                title: Payload too large
+                status: 413
+                code: payload_too_large
+                detail: Maximum file size is 20971520 bytes.
+                request_id: upd-81234591-1
+    UnsupportedMediaType:
+      description: Контейнер или кодек не поддерживается (определяется по содержимому, а не по расширению).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            unsupported:
+              value:
+                type: about:blank
+                title: Unsupported media type
+                status: 415
+                code: unsupported_audio_format
+                detail: Supported formats are ogg_opus, m4a_aac, mp3, wav_pcm.
+                request_id: upd-81234592-1
+    UnprocessableAudio:
+      description: |
+        Файл не декодируется (`audio_decode_failed`) или длиннее 300 с (`audio_too_long`).
+        Тишина и короткая речь сюда не относятся — это 200 `not_classified`.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            tooLong:
+              value:
+                type: about:blank
+                title: Audio too long
+                status: 422
+                code: audio_too_long
+                detail: Maximum audio duration is 300 seconds.
+                request_id: upd-81234593-1
+    InternalError:
+      description: Непредвиденная ошибка; бот может повторить в пределах политики повторов.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            internal:
+              value:
+                type: about:blank
+                title: Internal error
+                status: 500
+                code: internal_error
+                retryable: true
+                request_id: upd-81234594-1
+    ServiceUnavailable:
+      description: |
+        `overloaded` — заняты оба слота обработки, а ожидание дольше 30 с; `processing_timeout` — превышен внутренний дедлайн
+        (60 с + 0.2 × длительность аудио); `maintenance` — модели не загружены.
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/Retry-After'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            overloaded:
+              value:
+                type: about:blank
+                title: Service overloaded
+                status: 503
+                code: overloaded
+                retryable: true
+                request_id: upd-81234595-1
+  schemas:
+    ContentLabel:
+      type: string
+      description: Метка содержания (`02-final-concept.md` §6). Соответствие меткам датасета — 0 normal, 1 spam, 2 clickbait.
+      enum: [spam, clickbait, normal]
+    ClassificationStatus:
+      type: string
+      description: |
+        `classified` — метка выставлена; `uncertain` — речь распознана, но уверенность ниже порога;
+        `not_classified` — проверить содержание невозможно (см. `reason`).
+      enum: [classified, uncertain, not_classified]
+    NotClassifiedReason:
+      type: string
+      description: Причина отсутствия метки. `low_confidence` — только для `uncertain`, остальные — только для `not_classified`.
+      enum: [low_confidence, no_speech, speech_too_short, unsupported_language]
+    ClassificationRequest:
+      type: object
+      required: [audio]
+      properties:
+        audio:
+          type: string
+          contentMediaType: application/octet-stream
+          description: Аудиофайл целиком, не более 20 МБ и 300 с.
+        source_kind:
+          type: string
+          description: Тип источника по данным бота, только для статистики и логов; на результат не влияет.
+          enum: [own, forwarded, record, file]
+      additionalProperties: false
+    Scores:
+      type: object
+      description: Калиброванные вероятности классов; сумма равна 1 с точностью до округления.
+      required: [spam, clickbait, normal]
+      properties:
+        spam:
+          type: number
+          minimum: 0
+          maximum: 1
+        clickbait:
+          type: number
+          minimum: 0
+          maximum: 1
+        normal:
+          type: number
+          minimum: 0
+          maximum: 1
+      additionalProperties: false
+    ModelVersions:
+      type: object
+      description: Версии компонентов (`имя@версия` из реестра MLflow). Не связаны с версией API.
+      required: [asr_model, lid_model, classifier_model, decision_policy]
+      properties:
+        asr_model:
+          type: string
+          examples: [gigaam-v3-e2e-rnnt@1]
+        lid_model:
+          type: string
+          examples: [faster-whisper-base@1]
+        classifier_model:
+          type: string
+          examples: [tfidf-logreg@1]
+        decision_policy:
+          type: string
+          description: Версия порогов и правил статуса.
+          examples: [policy@1]
+    Timings:
+      type: object
+      description: Время участков обработки в сервисе, мс. 0 — участок не выполнялся.
+      required: [decode, vad, lid, asr, classify, total]
+      properties:
+        decode:
+          type: integer
+          minimum: 0
+        vad:
+          type: integer
+          minimum: 0
+        lid:
+          type: integer
+          minimum: 0
+        asr:
+          type: integer
+          minimum: 0
+        classify:
+          type: integer
+          minimum: 0
+        total:
+          type: integer
+          minimum: 0
+    Classification:
+      type: object
+      required:
+        - request_id
+        - status
+        - label
+        - reason
+        - confidence
+        - scores
+        - detected_language
+        - audio_duration_s
+        - speech_duration_s
+        - transcript
+        - models
+        - timings_ms
+      properties:
+        request_id:
+          type: string
+        status:
+          $ref: '#/components/schemas/ClassificationStatus'
+        label:
+          description: Метка; заполнена только при `status = classified`.
+          oneOf:
+            - $ref: '#/components/schemas/ContentLabel'
+            - type: 'null'
+        reason:
+          description: Причина; `null` только при `status = classified`.
+          oneOf:
+            - $ref: '#/components/schemas/NotClassifiedReason'
+            - type: 'null'
+        confidence:
+          type: [number, 'null']
+          minimum: 0
+          maximum: 1
+          description: Калиброванная вероятность наиболее вероятного класса; `null`, если классификатор не запускался. Не гарантия правильности.
+        scores:
+          description: Вероятности классов; `null`, если классификатор не запускался.
+          oneOf:
+            - $ref: '#/components/schemas/Scores'
+            - type: 'null'
+        detected_language:
+          type: [string, 'null']
+          description: Язык речи (ISO 639-1); `null`, если речи нет.
+          examples: [ru]
+        audio_duration_s:
+          type: number
+          minimum: 0
+          maximum: 300
+        speech_duration_s:
+          type: number
+          minimum: 0
+          maximum: 300
+        transcript:
+          type: [string, 'null']
+          maxLength: 20000
+          description: Расшифровка GigaAM (с пунктуацией); `null`, если речи нет или язык не поддерживается. Сервис её не сохраняет.
+        models:
+          $ref: '#/components/schemas/ModelVersions'
+        timings_ms:
+          $ref: '#/components/schemas/Timings'
+      allOf:
+        - if:
+            properties:
+              status:
+                const: classified
+          then:
+            properties:
+              label:
+                $ref: '#/components/schemas/ContentLabel'
+              reason:
+                type: 'null'
+              scores:
+                $ref: '#/components/schemas/Scores'
+        - if:
+            properties:
+              status:
+                const: uncertain
+          then:
+            properties:
+              label:
+                type: 'null'
+              reason:
+                const: low_confidence
+              scores:
+                $ref: '#/components/schemas/Scores'
+        - if:
+            properties:
+              status:
+                const: not_classified
+          then:
+            properties:
+              label:
+                type: 'null'
+              reason:
+                enum: [no_speech, speech_too_short, unsupported_language]
+              scores:
+                type: 'null'
+              confidence:
+                type: 'null'
+    ServiceInfo:
+      type: object
+      required: [api_version, supported_languages, supported_formats, limits, policy, models]
+      properties:
+        api_version:
+          type: string
+        supported_languages:
+          type: array
+          items:
+            type: string
+        supported_formats:
+          type: array
+          items:
+            type: string
+            enum: [ogg_opus, m4a_aac, mp3, wav_pcm]
+        limits:
+          type: object
+          required: [max_file_bytes, max_audio_duration_s, min_speech_duration_s, max_concurrent_requests]
+          properties:
+            max_file_bytes:
+              type: integer
+            max_audio_duration_s:
+              type: number
+            min_speech_duration_s:
+              type: number
+            max_concurrent_requests:
+              type: integer
+        policy:
+          type: object
+          description: Пороги текущей `decision_policy`.
+          required: [tau, tau_spam, lang_threshold]
+          properties:
+            tau:
+              type: number
+              minimum: 0
+              maximum: 1
+            tau_spam:
+              type: number
+              minimum: 0
+              maximum: 1
+            lang_threshold:
+              type: number
+              minimum: 0
+              maximum: 1
+        models:
+          $ref: '#/components/schemas/ModelVersions'
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, unavailable]
+    Problem:
+      type: object
+      description: Ошибка в формате RFC 9457 с расширениями `code`, `retryable`, `request_id`.
+      required: [type, title, status, code, request_id]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        code:
+          type: string
+          enum:
+            - invalid_request
+            - unauthorized
+            - payload_too_large
+            - unsupported_audio_format
+            - audio_decode_failed
+            - audio_too_long
+            - internal_error
+            - overloaded
+            - processing_timeout
+            - maintenance
+        retryable:
+          type: boolean
+          default: false
+        request_id:
+          type: string
