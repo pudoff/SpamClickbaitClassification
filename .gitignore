@@ -17,5 +17,5 @@ __pycache__/
 Datasets/mlruns/
 Datasets/*.pkl
 Datasets/*.bak_*
-
+*.pkl
 
