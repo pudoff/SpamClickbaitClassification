@@ -1,0 +1,45 @@
+# Docker Compose проекта (03-final-architecture.md §11.1).
+#
+#   1) Обучить модель (один раз, ~15 минут):  docker compose --profile train run --rm trainer
+#   2) Поднять сервис:                                 docker compose up -d --build
+#   3) Swagger UI:                                     http://localhost:8000/docs
+#
+# Бот (aiogram) и ASR появятся здесь отдельными сервисами по мере готовности.
+name: spam-clickbait
+
+x-inference-image: &inference-image
+  build: ./inference-api
+  image: spam-clickbait/inference-api:local
+
+services:
+  inference-api:
+    <<: *inference-image
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      MODEL_PATH: /models/${MODEL_FILE:-model.joblib}
+    volumes:
+      - ./inference-api/models:/models:ro
+    # Только 127.0.0.1: на сервере Swagger открывается через SSH-туннель (§11.1).
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    restart: unless-stopped
+
+  trainer:
+    <<: *inference-image
+    profiles: [train]
+    command:
+      - python
+      - -m
+      - training.train
+      - --data=/data/df.csv
+      - --out=/models
+      - --config=${TRAIN_CONFIG:-exp4}
+      - --version=${MODEL_VERSION:-1}
+    volumes:
+      - ./Datasets:/data:ro
+      - ./inference-api/models:/models
+    restart: "no"
+    healthcheck:
+      disable: true

@@ -1,0 +1,28 @@
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Pycache
+__pycache__/
+*.pyc
+Datasets/mlruns/
+Datasets/*.pkl
+Datasets/*.bak_*
+*.pkl
+
+
+# Inference API: артефакты моделей и секреты
+inference-api/models/*
+!inference-api/models/.gitkeep
+.env
+.pytest_cache/
+.ruff_cache/
