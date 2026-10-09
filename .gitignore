@@ -19,3 +19,10 @@ Datasets/*.pkl
 Datasets/*.bak_*
 *.pkl
 
+
+# Inference API: артефакты моделей и секреты
+inference-api/models/*
+!inference-api/models/.gitkeep
+.env
+.pytest_cache/
+.ruff_cache/

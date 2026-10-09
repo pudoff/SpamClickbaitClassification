@@ -1,0 +1,7 @@
+-r requirements.txt
+# TestClient, тесты, линтер, запуск из Jupyter/Colab
+httpx==0.28.1
+pytest>=8
+ruff>=0.6
+nest-asyncio>=1.6
+requests>=2.32
