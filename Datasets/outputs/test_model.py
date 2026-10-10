@@ -7,6 +7,9 @@ pytest-тесты для Модели 2 (Word + Char N-grams) проекта «�
 """
 
 import pickle
+from pathlib import Path
+
+ARTIFACT_DIR = Path(__file__).resolve().parent
 import random
 import re
 
@@ -47,10 +50,10 @@ HOMOGLYPHS = {
 
 # Загрузка артефактов.
 
-with open("model.pkl", "rb") as f:
+with open(ARTIFACT_DIR / "model.pkl", "rb") as f:
     model = pickle.load(f)
 
-with open("test_sample.pkl", "rb") as f:
+with open(ARTIFACT_DIR / "test_sample.pkl", "rb") as f:
     SAMPLE: pd.DataFrame = pickle.load(f)
 
 

@@ -1,0 +1,72 @@
+{
+  "checked_all_code_cells_syntax": true,
+  "loader_fixture_passed": true,
+  "executed_cells": [
+    {
+      "cell": 1,
+      "stdout": "C:\\Python313\\python.exe\n3.13.7 (tags/v3.13.7:bcee1c3, Aug 14 2025, 14:15:11) [MSC v.1944 64 bit (AMD64)]\n",
+      "stderr": ""
+    },
+    {
+      "cell": 2,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cell": 4,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cell": 6,
+      "stdout": "Сведения о восстановленных данных (до очистки):\n<class 'pandas.core.frame.DataFrame'>\nRangeIndex: 641738 entries, 0 to 641737\nData columns (total 2 columns):\n #   Column                  Non-Null Count   Dtype \n---  ------                  --------------   ----- \n 0   text                    641738 non-null  object\n 1   is_spam1_or_clickbait2  641738 non-null  int64 \ndtypes: int64(1), object(1)\nmemory usage: 491.6 MB\nРазмер восстановленной таблицы: (641738, 2)\nДиагностика загрузки: {'physical_data_lines': 643009, 'comma_records': 638540, 'semicolon_records': 3198, 'embedded_header': 4, 'no_integer_label': 1266, 'invalid_label': 1, 'blank_lines': 1, 'recovered_records': 641738}\nСтроки с целочисленными метками вне 0/1/2: 1\nПропуски в восстановленной таблице:\nПустые/пробельные тексты: 2\nПолные дубликаты сверх первого экземпляра: 185121\nРаспределение всех меток до фильтрации:\nРазмер таблицы с допустимыми метками: (641737, 2)\n",
+      "stderr": ""
+    },
+    {
+      "cell": 8,
+      "stdout": "0 — Обычные: 370272 (57.70%)\n1 — Спам: 157100 (24.48%)\n2 — Кликбейт: 114365 (17.82%)\nСоотношение максимального и минимального ненулевого класса: 3.24x\n",
+      "stderr": ""
+    },
+    {
+      "cell": 10,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "cell": 12,
+      "stdout": "<IPython.core.display.HTML object>\nОтчёт сохранён: D:\\Pudov\\УРФУ\\03.Учеба\\3. Семестр\\SpamClickbaitClassification\\Datasets\\profiling_report.html\n",
+      "stderr": "\rSummarize dataset:   0%|          | 0/5 [00:00<?, ?it/s]\rSummarize dataset:   0%|          | 0/7 [00:00<?, ?it/s, Describe variable: text]\rSummarize dataset:   0%|          | 0/7 [00:00<?, ?it/s, Describe variable: is_spam1_or_clickbait2]\n\r  0%|          | 0/2 [00:00<?, ?it/s]\u001b[A\rSummarize dataset:  14%|#4        | 1/7 [00:02<00:14,  2.39s/it, Describe variable: is_spam1_or_clickbait2]\rSummarize dataset:  29%|##8       | 2/7 [00:59<02:51, 34.31s/it, Describe variable: is_spam1_or_clickbait2]\n\r 50%|#####     | 1/2 [00:58<00:58, 58.91s/it]\u001b[A\r100%|##########| 2/2 [00:58<00:00, 29.45s/it]\n\rSummarize dataset:  29%|##8       | 2/7 [00:59<02:51, 34.31s/it, Get variable types]                       \rSummarize dataset:  38%|###7      | 3/8 [00:59<02:51, 34.31s/it, Get dataframe statistics]\rSummarize dataset:  50%|#####     | 4/8 [00:59<02:17, 34.31s/it, Get scatter matrix]      \rSummarize dataset:  50%|#####     | 4/8 [00:59<02:17, 34.31s/it, Take sample]       \rSummarize dataset:  62%|######2   | 5/8 [00:59<01:42, 34.31s/it, Detecting duplicates]\rSummarize dataset:  75%|#######5  | 6/8 [00:59<01:08, 34.31s/it, Get alerts]          \rSummarize dataset:  88%|########7 | 7/8 [00:59<00:34, 34.31s/it, Get reproduction details]\rSummarize dataset: 100%|##########| 8/8 [00:59<00:00, 34.31s/it, Completed]               \rSummarize dataset: 100%|##########| 8/8 [00:59<00:00,  7.38s/it, Completed]\n\rGenerate report structure:   0%|          | 0/1 [00:00<?, ?it/s]\rGenerate report structure: 100%|##########| 1/1 [00:03<00:00,  3.80s/it]\rGenerate report structure: 100%|##########| 1/1 [00:03<00:00,  3.80s/it]\n\rRender HTML:   0%|          | 0/1 [00:00<?, ?it/s]\rRender HTML: 100%|##########| 1/1 [00:00<00:00,  5.43it/s]\rRender HTML: 100%|##########| 1/1 [00:00<00:00,  5.43it/s]\n\rExport report to file:   0%|          | 0/1 [00:00<?, ?it/s]\rExport report to file: 100%|##########| 1/1 [00:00<00:00, 277.09it/s]\n"
+    },
+    {
+      "cell": 13,
+      "stdout": "До очистки (только допустимые метки): (641737, 2)\nУдалено пустых текстов: 2\nПосле удаления пустых текстов и полных дубликатов: (456615, 2)\nКонфликтующих нормализованных текстов: 527\nИсключено уникальных пар текст/метка с конфликтом: 1067\nПосле исключения конфликтов и вариантов регистра/пробелов: (455401, 3)\n",
+      "stderr": ""
+    },
+    {
+      "cell": 15,
+      "stdout": "Пустых текстов после нормализации: 1649\nДополнительных конфликтующих нормализованных признаковых текстов: 1240\nРазмер выборки для обучения: (442780, 4)\nПодготовка завершена за 30.2 сек.\nРазмер тренировочной выборки: 354224\nРазмер тестовой выборки: 88556\nРаспределение классов в train:\n",
+      "stderr": ""
+    },
+    {
+      "cell": 17,
+      "stdout": "Пример исходного текста:\nНовые издательские и редакторские имена США\nПример очищенного текста:\nновые издательские и редакторские имена сша\nСовпадающих очищенных текстов между train и test: 0 (проверено assert)\n",
+      "stderr": ""
+    },
+    {
+      "cell": 19,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "model_training_executed": false,
+  "raw_rows": 641738,
+  "prepared_rows": 442780,
+  "prepared_class_counts": {
+    "0": 271916,
+    "1": 104994,
+    "2": 65870
+  },
+  "train_rows": 354224,
+  "test_rows": 88556,
+  "train_test_clean_text_overlap": 0
+}
