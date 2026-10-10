@@ -1,6 +1,6 @@
-# Отчёт по Task1: классификация спама и кликбейта
+# Отчёт по домашнему заданию: Кейс 4: классификация спама и кликбейта
 
-**Команда:** «Великолепная четверка». **Дата:** 09.10.2026. **Ревизия:** `76c0233`.
+**Команда:** «Великолепная четверка». **Дата:** 09.10.2026.
 
 **Репозиторий:** [pudoff/SpamClickbaitClassification](https://github.com/pudoff/SpamClickbaitClassification). **Полное описание данных и экспериментов:** [dataset_description.md](dataset_description.md), [HTML](dataset_description.html).
 
