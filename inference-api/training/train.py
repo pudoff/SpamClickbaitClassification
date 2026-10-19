@@ -1,14 +1,3 @@
-"""Обучение «Модели 2» из Datasets/notebooks/model_mlflow.ipynb и сохранение артефакта для сервиса.
-
-Запуск в Docker (рекомендуется — та же версия sklearn, что у сервиса):
-    docker compose --profile train run --rm trainer
-
-Локально (из inference-api/, в .venv проекта):
-    python -m training.train --data ../Datasets/df.csv --out models
-
-Результат: <out>/model.joblib и <out>/model_meta.json (версия, дата, метрики, конфигурация).
-"""
-
 import argparse
 import json
 import logging
@@ -20,14 +9,13 @@ from pathlib import Path
 import joblib
 import numpy as np
 import sklearn
+from app.model import LABELS, sha256_of
+from app.text import clean_text
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import FeatureUnion, Pipeline
-
-from app.model import LABELS, sha256_of
-from app.text import clean_text
 
 logger = logging.getLogger("train")
 

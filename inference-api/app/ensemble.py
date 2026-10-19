@@ -52,7 +52,7 @@ def build_vocabularies(texts, encoding=DEFAULT_ENCODING):
             vocab[token] = len(vocab)
     char_freq = {}
     for text in texts[:100000]:
-        for char in text[:encoding.max_chars]:
+        for char in text[: encoding.max_chars]:
             char_freq[char] = char_freq.get(char, 0) + 1
     char_vocab = {"<pad>": 0, "<unk>": 1}
     for char, _ in sorted(char_freq.items(), key=lambda item: -item[1]):
@@ -66,23 +66,28 @@ def encode_texts(texts, vocab, char_vocab, encoding=DEFAULT_ENCODING):
     char_ids = np.zeros((len(texts), encoding.max_chars), dtype=np.int64)
     surf = np.zeros((len(texts), N_SURF), dtype=np.float32)
     for i, text in enumerate(texts):
-        tokens = word_ngrams(text)[:encoding.max_len]
-        word_ids[i, :len(tokens)] = [vocab.get(token, 1) for token in tokens]
-        chars = text[:encoding.max_chars]
-        char_ids[i, :len(chars)] = [char_vocab.get(char, 1) for char in chars]
+        tokens = word_ngrams(text)[: encoding.max_len]
+        word_ids[i, : len(tokens)] = [vocab.get(token, 1) for token in tokens]
+        chars = text[: encoding.max_chars]
+        char_ids[i, : len(chars)] = [char_vocab.get(char, 1) for char in chars]
         nchar = max(len(text), 1)
         letters = [char for char in text if char.isalpha()] or ["a"]
         nl = len(letters)
         words = text.split() or ["a"]
         lengths = [len(word) for word in words]
         surf[i] = [
-            np.log1p(len(text)), np.log1p(len(words)), np.mean(lengths), max(lengths),
+            np.log1p(len(text)),
+            np.log1p(len(words)),
+            np.mean(lengths),
+            max(lengths),
             sum(char in CYR for char in letters) / nl,
             sum(char.isascii() and char.isalpha() for char in letters) / nl,
             sum(char.isdigit() for char in text) / nchar,
             sum(char.isupper() for char in letters) / nl,
-            float(" url " in text), len(set(words)) / len(words),
-            np.log1p(text.count(" ")), text.count("!"),
+            float(" url " in text),
+            len(set(words)) / len(words),
+            np.log1p(text.count(" ")),
+            text.count("!"),
         ]
     return word_ids, char_ids, surf
 
@@ -102,8 +107,9 @@ class AttentionPool(nn.Module):
 
 
 class SpamClickbaitNet(nn.Module):
-    def __init__(self, vocab_size, char_vocab_size, emb_dim=128, hidden=128,
-                 char_channels=128, use_char=True, dropout=0.4):
+    def __init__(
+        self, vocab_size, char_vocab_size, emb_dim=128, hidden=128, char_channels=128, use_char=True, dropout=0.4
+    ):
         super().__init__()
         self.use_char = use_char
         self.embedding = nn.Embedding(vocab_size, emb_dim, padding_idx=0)
@@ -118,9 +124,13 @@ class SpamClickbaitNet(nn.Module):
             self.char_bn2 = nn.BatchNorm1d(char_channels)
             d_char = char_channels
         self.head = nn.Sequential(
-            nn.Linear(hidden * 2 + d_char + N_SURF, 128), nn.ReLU(),
-            nn.BatchNorm1d(128), nn.Dropout(dropout),
-            nn.Linear(128, 64), nn.ReLU(), nn.Dropout(dropout),
+            nn.Linear(hidden * 2 + d_char + N_SURF, 128),
+            nn.ReLU(),
+            nn.BatchNorm1d(128),
+            nn.Dropout(dropout),
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Dropout(dropout),
         )
         self.classifier = nn.Linear(64, 3)
 
@@ -144,12 +154,21 @@ class CharCNN(nn.Module):
         super().__init__()
         self.emb = nn.Embedding(vocab_size, 64, padding_idx=0)
         self.features = nn.Sequential(
-            nn.Conv1d(64, channels, 5, padding=2), nn.BatchNorm1d(channels), nn.ReLU(),
-            nn.Conv1d(channels, channels, 5, padding=2), nn.BatchNorm1d(channels), nn.ReLU(),
-            nn.Conv1d(channels, channels, 5, padding=2), nn.BatchNorm1d(channels), nn.ReLU(),
+            nn.Conv1d(64, channels, 5, padding=2),
+            nn.BatchNorm1d(channels),
+            nn.ReLU(),
+            nn.Conv1d(channels, channels, 5, padding=2),
+            nn.BatchNorm1d(channels),
+            nn.ReLU(),
+            nn.Conv1d(channels, channels, 5, padding=2),
+            nn.BatchNorm1d(channels),
+            nn.ReLU(),
         )
         self.head = nn.Sequential(
-            nn.Linear(channels + N_SURF, 128), nn.ReLU(), nn.Dropout(dropout), nn.Linear(128, n_classes),
+            nn.Linear(channels + N_SURF, 128),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(128, n_classes),
         )
 
     def forward(self, char_ids, surf):
@@ -191,7 +210,7 @@ class EnsemblePredictor:
             return np.empty((0, 3))
         batches = []
         for start in range(0, len(cleaned_texts), 64):
-            texts = cleaned_texts[start:start + 64]
+            texts = cleaned_texts[start : start + 64]
             parts = self.component_probabilities(texts)
             blend = sum(self.weights[key] * parts[key] for key in ("rnn", "char", "lr"))
             blend = blend / blend.sum(axis=1, keepdims=True)
@@ -227,9 +246,15 @@ def load_ensemble(manifest_path):
     char = CharCNN(len(vocab_data["char"]))
     rnn.load_state_dict(torch.load(paths["rnn"], map_location="cpu", weights_only=True))
     char.load_state_dict(torch.load(paths["char"], map_location="cpu", weights_only=True))
-    predictor = EnsemblePredictor(rnn, char, joblib.load(paths["lr"]),
-                                  vocab_data["word"], vocab_data["char"],
-                                  manifest["weights"], Encoding(**manifest["encoding"]))
+    predictor = EnsemblePredictor(
+        rnn,
+        char,
+        joblib.load(paths["lr"]),
+        vocab_data["word"],
+        vocab_data["char"],
+        manifest["weights"],
+        Encoding(**manifest["encoding"]),
+    )
     return predictor, manifest["meta"]
 
 
@@ -240,12 +265,21 @@ def save_bundle(folder, predictor, meta):
     torch.save(predictor.rnn.state_dict(), folder / "rnn.pt")
     torch.save(predictor.char.state_dict(), folder / "char.pt")
     joblib.dump(predictor.lr, folder / "lr.joblib", compress=3)
-    (folder / "vocab.json").write_text(json.dumps(
-        {"word": predictor.vocab, "char": predictor.char_vocab}, ensure_ascii=False), encoding="utf-8")
-    files = {key: {"path": name, "sha256": file_hash(folder / name)} for key, name in
-             {"rnn": "rnn.pt", "char": "char.pt", "lr": "lr.joblib", "vocab": "vocab.json"}.items()}
-    manifest = {"format": FORMAT, "classes": [0, 1, 2], "weights": predictor.weights,
-                "encoding": asdict(predictor.encoding), "files": files, "meta": meta}
+    (folder / "vocab.json").write_text(
+        json.dumps({"word": predictor.vocab, "char": predictor.char_vocab}, ensure_ascii=False), encoding="utf-8"
+    )
+    files = {
+        key: {"path": name, "sha256": file_hash(folder / name)}
+        for key, name in {"rnn": "rnn.pt", "char": "char.pt", "lr": "lr.joblib", "vocab": "vocab.json"}.items()
+    }
+    manifest = {
+        "format": FORMAT,
+        "classes": [0, 1, 2],
+        "weights": predictor.weights,
+        "encoding": asdict(predictor.encoding),
+        "files": files,
+        "meta": meta,
+    }
     path = folder / "manifest.json"
     path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return path

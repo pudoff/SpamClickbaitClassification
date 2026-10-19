@@ -5,8 +5,6 @@ import json
 import numpy as np
 import pytest
 import torch
-from fastapi.testclient import TestClient
-
 from app.config import Settings
 from app.ensemble import (
     CharCNN,
@@ -19,8 +17,10 @@ from app.ensemble import (
 )
 from app.main import create_app
 from app.text import clean_text
-from tests.test_api import TOY_DATA
+from fastapi.testclient import TestClient
 from training.train import BASE_CONFIG, build_pipeline
+
+from tests.test_api import TOY_DATA
 
 
 @pytest.fixture(scope="module")
@@ -32,14 +32,26 @@ def ensemble_bundle(tmp_path_factory):
     encoding = Encoding(max_len=16, max_chars=24, vocab_limit=100, min_freq=1)
     vocab, char_vocab = build_vocabularies(texts, encoding)
     lr = build_pipeline({**BASE_CONFIG, "word_min_df": 1, "char_min_df": 1}, labels).fit(texts, labels)
-    predictor = EnsemblePredictor(SpamClickbaitNet(len(vocab), len(char_vocab)),
-                                  CharCNN(len(char_vocab)), lr, vocab, char_vocab,
-                                  {"rnn": .4, "char": .4, "lr": .2}, encoding)
+    predictor = EnsemblePredictor(
+        SpamClickbaitNet(len(vocab), len(char_vocab)),
+        CharCNN(len(char_vocab)),
+        lr,
+        vocab,
+        char_vocab,
+        {"rnn": 0.4, "char": 0.4, "lr": 0.2},
+        encoding,
+    )
     folder = tmp_path_factory.mktemp("ensemble")
-    path = save_bundle(folder, predictor, {
-        "name": "rnn-cnn-lr", "version": "test", "framework": "PyTorch + scikit-learn",
-        "config": {"weights": predictor.weights, "selection_split": "dev"},
-    })
+    path = save_bundle(
+        folder,
+        predictor,
+        {
+            "name": "rnn-cnn-lr",
+            "version": "test",
+            "framework": "PyTorch + scikit-learn",
+            "config": {"weights": predictor.weights, "selection_split": "dev"},
+        },
+    )
     return path, predictor
 
 
@@ -49,7 +61,7 @@ def test_bundle_roundtrip_and_weighted_probabilities(ensemble_bundle):
     texts = [clean_text("Вам одобрен кредит срочно позвоните"), "", "неизвестноеслово", " NUM "]
     # Independent weighted sum before serialization vs public predictor after loading.
     parts = original.component_probabilities(texts)
-    expected = .4 * parts["rnn"] + .4 * parts["char"] + .2 * parts["lr"]
+    expected = 0.4 * parts["rnn"] + 0.4 * parts["char"] + 0.2 * parts["lr"]
     actual = restored.predict_proba(texts)
     np.testing.assert_allclose(actual, expected, atol=1e-7)
     assert np.isfinite(actual).all()
@@ -68,7 +80,7 @@ def test_eval_does_not_update_batchnorm(ensemble_bundle):
 
 def test_ensemble_api_and_swagger(ensemble_bundle):
     path, predictor = ensemble_bundle
-    settings = Settings(model_path=path, meta_path=path.with_name("unused.json"), tau=.55, tau_spam=.65)
+    settings = Settings(model_path=path, meta_path=path.with_name("unused.json"), tau=0.55, tau_spam=0.65)
     text = "Вам одобрен кредит срочно позвоните"
     expected = predictor.predict_proba([clean_text(text)])[0]
     with TestClient(create_app(settings)) as client:
@@ -76,7 +88,7 @@ def test_ensemble_api_and_swagger(ensemble_bundle):
         info = client.get("/model-info").json()
         assert info["model_version"] == "rnn-cnn-lr@test"
         assert info["framework"] == "PyTorch + scikit-learn"
-        assert info["config"]["weights"] == {"rnn": .4, "char": .4, "lr": .2}
+        assert info["config"]["weights"] == {"rnn": 0.4, "char": 0.4, "lr": 0.2}
         body = client.post("/predict", json={"text": text, "threshold": 0}).json()
         assert body["model_version"] == "rnn-cnn-lr@test"
         np.testing.assert_allclose([body["scores"][name] for name in ("normal", "spam", "clickbait")], expected)
@@ -97,7 +109,7 @@ def test_invalid_ensemble_is_unavailable_without_lr_fallback(ensemble_bundle, tm
     if damage == "checksum":
         (tmp_path / "vocab.json").write_text("{}", encoding="utf-8")
     elif damage == "weights":
-        manifest["weights"]["rnn"] = -.4
+        manifest["weights"]["rnn"] = -0.4
         manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
     elif damage == "sklearn":
         manifest["meta"]["sklearn_version"] = "incompatible-version"
@@ -107,7 +119,7 @@ def test_invalid_ensemble_is_unavailable_without_lr_fallback(ensemble_bundle, tm
         manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
     else:
         (tmp_path / "char.pt").unlink()
-    settings = Settings(model_path=manifest_path, meta_path=tmp_path / "unused.json", tau=.55, tau_spam=.65)
+    settings = Settings(model_path=manifest_path, meta_path=tmp_path / "unused.json", tau=0.55, tau_spam=0.65)
     with TestClient(create_app(settings)) as client:
         assert client.get("/healthcheck").status_code == 503
         assert client.post("/predict", json={"text": "Привет как дела"}).status_code == 503

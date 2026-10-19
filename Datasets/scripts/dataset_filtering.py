@@ -1,10 +1,10 @@
 """Проверка текстов до train/test split; исходный CSV не изменяется."""
 
+import json
+import re
 from collections import Counter
 from functools import lru_cache
-import json
 from pathlib import Path
-import re
 
 import pandas as pd
 
@@ -61,10 +61,7 @@ def inspect_text(text):
         start = end
     kept = [token for _, run in runs for token in run]
     cleaned = " ".join(kept) if fragments else text
-    word_count = sum(
-        CYRILLIC_WORD_RE.fullmatch(token_body(token)) is not None
-        for token in kept
-    )
+    word_count = sum(CYRILLIC_WORD_RE.fullmatch(token_body(token)) is not None for token in kept)
     reasons = []
     if CYRILLIC_RE.search(cleaned) is None:
         reasons.append("no_cyrillic")
@@ -87,7 +84,7 @@ def filter_dataset(frame, text_column="text", label_column=TARGET_COLUMN):
     if source_lines is not None and len(source_lines) != len(frame):
         raise ValueError("source_lines не соответствует числу строк DataFrame")
     for position, (source_index, text, label) in enumerate(
-        zip(frame.index, frame[text_column], frame[label_column])
+        zip(frame.index, frame[text_column], frame[label_column], strict=True)
     ):
         cleaned, word_count, fragments, reasons = inspect_text(text)
         if label not in {0, 1, 2}:
@@ -104,34 +101,57 @@ def filter_dataset(frame, text_column="text", label_column=TARGET_COLUMN):
             if fragments:
                 counters["corrected_retained_rows"] += 1
         if reasons or fragments:
-            changes.append({
-                "source_index": source_index,
-                "source_line": source_lines[position] if source_lines is not None else None,
-                "label": label,
-                "action": "excluded" if reasons else "corrected",
-                "reasons": ";".join(reasons),
-                "cyrillic_words_after": word_count,
-                "text_before": text,
-                "text_after": cleaned,
-                "removed_fragments": json.dumps(fragments, ensure_ascii=False),
-            })
+            changes.append(
+                {
+                    "source_index": source_index,
+                    "source_line": source_lines[position] if source_lines is not None else None,
+                    "label": label,
+                    "action": "excluded" if reasons else "corrected",
+                    "reasons": ";".join(reasons),
+                    "cyrillic_words_after": word_count,
+                    "text_before": text,
+                    "text_after": cleaned,
+                    "removed_fragments": json.dumps(fragments, ensure_ascii=False),
+                }
+            )
     filtered = frame.iloc[keep_positions].copy()
     filtered[text_column] = cleaned_texts
     filtered.attrs = {}
     if source_lines is not None:
         filtered.attrs["source_lines"] = [source_lines[p] for p in keep_positions]
     filtered = filtered.reset_index(drop=True)
-    columns = ["source_index", "source_line", "label", "action", "reasons",
-               "cyrillic_words_after", "text_before", "text_after", "removed_fragments"]
+    columns = [
+        "source_index",
+        "source_line",
+        "label",
+        "action",
+        "reasons",
+        "cyrillic_words_after",
+        "text_before",
+        "text_after",
+        "removed_fragments",
+    ]
     journal = pd.DataFrame(changes, columns=columns)
     stats = {
-        "rules": {"min_cyrillic_words": 3, "remove_runs_longer_than": 3,
-                  "repeat_action": "remove_fragment_then_filter"},
-        "input_rows": len(frame), "retained_rows": len(filtered),
-        **{key: int(counters[key]) for key in (
-            "excluded_rows", "no_cyrillic", "fewer_than_3_cyrillic_words",
-            "invalid_label", "rows_with_removed_repeats", "removed_repeat_fragments",
-            "corrected_retained_rows")},
+        "rules": {
+            "min_cyrillic_words": 3,
+            "remove_runs_longer_than": 3,
+            "repeat_action": "remove_fragment_then_filter",
+        },
+        "input_rows": len(frame),
+        "retained_rows": len(filtered),
+        **{
+            key: int(counters[key])
+            for key in (
+                "excluded_rows",
+                "no_cyrillic",
+                "fewer_than_3_cyrillic_words",
+                "invalid_label",
+                "rows_with_removed_repeats",
+                "removed_repeat_fragments",
+                "corrected_retained_rows",
+            )
+        },
         "input_classes": {str(k): int(v) for k, v in frame[label_column].value_counts().sort_index().items()},
         "retained_classes": {str(k): int(v) for k, v in filtered[label_column].value_counts().sort_index().items()},
         "note": "Причины исключения пересекаются; счётчики нельзя складывать.",
@@ -144,7 +164,5 @@ def save_filter_audit(journal, stats, output_dir):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     journal.to_csv(output_dir / "changes.csv", index=False, encoding="utf-8-sig")
-    journal.loc[journal.action.eq("excluded")].to_csv(
-        output_dir / "excluded.csv", index=False, encoding="utf-8-sig")
-    (output_dir / "summary.json").write_text(
-        json.dumps(stats, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    journal.loc[journal.action.eq("excluded")].to_csv(output_dir / "excluded.csv", index=False, encoding="utf-8-sig")
+    (output_dir / "summary.json").write_text(json.dumps(stats, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

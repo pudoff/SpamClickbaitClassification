@@ -3,7 +3,6 @@
 import unittest
 
 import pandas as pd
-
 from dataset_filtering import filter_dataset, inspect_text
 
 
@@ -40,7 +39,9 @@ class DatasetFilteringTests(unittest.TestCase):
         self.assertEqual((count, fragments, reasons), (4, ["d d d d"], []))
 
     def test_runs_in_middle_removed_without_losing_good_end(self):
-        cleaned, count, fragments, reasons = inspect_text("Сегодня was was was was состоится важная встреча wit wit wit wit")
+        cleaned, count, fragments, reasons = inspect_text(
+            "Сегодня was was was was состоится важная встреча wit wit wit wit"
+        )
         self.assertEqual(cleaned, "Сегодня состоится важная встреча")
         self.assertEqual((count, len(fragments), reasons), (4, 2, []))
 
@@ -71,8 +72,12 @@ class DatasetFilteringTests(unittest.TestCase):
         self.assertEqual(inspect_text(cleaned), (cleaned, 4, [], []))
 
     def test_journal_source_lines_labels_and_input_not_modified(self):
-        frame = pd.DataFrame({"text": ["Три обычных слова d d d d", "голова js", "Это три слова"],
-                              "is_spam1_or_clickbait2": [0, 1, 2000]})
+        frame = pd.DataFrame(
+            {
+                "text": ["Три обычных слова d d d d", "голова js", "Это три слова"],
+                "is_spam1_or_clickbait2": [0, 1, 2000],
+            }
+        )
         frame.attrs["source_lines"] = [569398, 569406, 9]
         before = frame.copy(deep=True)
         cleaned, journal, stats = filter_dataset(frame)

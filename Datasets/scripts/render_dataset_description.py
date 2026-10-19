@@ -1,8 +1,7 @@
 """Создать HTML-версии описания датасета и короткого отчёта Task1."""
 
-from pathlib import Path
-from markdown_it import MarkdownIt
 from dataset_paths import DATASET_DIR
+from markdown_it import MarkdownIt
 
 
 def main():
@@ -31,10 +30,11 @@ def main():
     for name, title in reports:
         text = (directory / f"{name}.md").read_text(encoding="utf-8")
         body = MarkdownIt("commonmark").enable("table").render(text)
-        document = ("<!doctype html><html lang='ru'><head><meta charset='utf-8'>"
-                    "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-                    "<title>" + title + "</title><style>" + style +
-                    "</style></head><body>" + body + "</body></html>")
+        document = (
+            "<!doctype html><html lang='ru'><head><meta charset='utf-8'>"
+            "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+            "<title>" + title + "</title><style>" + style + "</style></head><body>" + body + "</body></html>"
+        )
         output = directory / f"{name}.html"
         output.write_text(document, encoding="utf-8")
         print(output)

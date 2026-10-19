@@ -1,16 +1,15 @@
 """Проверки независимости частей и групповой кросс-валидации."""
 
 import json
-from pathlib import Path
 import re
 import tempfile
 import unittest
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import StratifiedGroupKFold
-
 from dataset_splitting import make_data_splits, save_split_manifest
+from sklearn.model_selection import StratifiedGroupKFold
 
 
 def fixture():

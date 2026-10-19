@@ -1,11 +1,10 @@
 """Загрузка неоднородного df.csv без изменения исходного файла."""
 
+import re
 from collections import Counter
 from pathlib import Path
-import re
 
 import pandas as pd
-
 from dataset_paths import DATASET_DIR
 
 TARGET_COLUMN = "is_spam1_or_clickbait2"
@@ -43,9 +42,9 @@ def load_dataset(filename):
                 continue
             match = LABEL_AT_END.fullmatch(line)
             if match is None:
-                reason = "embedded_header" if line in (
-                    "текст,label", "Переводимое название,label"
-                ) else "no_integer_label"
+                reason = (
+                    "embedded_header" if line in ("текст,label", "Переводимое название,label") else "no_integer_label"
+                )
                 issues.append((line_number, reason, line))
                 counters[reason] += 1
                 continue
@@ -56,7 +55,7 @@ def load_dataset(filename):
                 text = text[1:-1].replace('""', '"')
             label = int(label_string)
             # Последний разделитель перед целочисленным суффиксом.
-            suffix = line[len(match.group(1)):]
+            suffix = line[len(match.group(1)) :]
             counters["semicolon_records" if suffix.startswith(";") else "comma_records"] += 1
             if label not in CLASS_NAMES:
                 issues.append((line_number, "invalid_label", line))
