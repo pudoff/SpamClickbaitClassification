@@ -12,14 +12,11 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
+import joblib
 import numpy as np
 import pandas as pd
 import sklearn
 import torch
-import joblib
-from sklearn.metrics import accuracy_score, f1_score
-from threadpoolctl import threadpool_limits
-
 from app.ensemble import (
     CharCNN,
     Encoding,
@@ -30,6 +27,9 @@ from app.ensemble import (
     save_bundle,
 )
 from app.text import clean_text
+from sklearn.metrics import accuracy_score, f1_score
+from threadpoolctl import threadpool_limits
+
 from training.train import load_fixed_csv
 
 logger = logging.getLogger("export-ensemble")
@@ -46,9 +46,14 @@ def restore_frame(data_path, scripts_dir):
     audit = data_path.parent / "outputs/filtering/audit_2026-10-11"
     audit_summary = audit / "summary.json"
     if audit_summary.exists() and json.loads(audit_summary.read_text(encoding="utf-8")).get(
-            "source_csv_sha256") == file_hash(data_path):
-        changes = pd.read_csv(audit / "changes.csv", usecols=["source_index", "action", "text_after"],
-                              encoding="utf-8-sig", keep_default_na=False)
+        "source_csv_sha256"
+    ) == file_hash(data_path):
+        changes = pd.read_csv(
+            audit / "changes.csv",
+            usecols=["source_index", "action", "text_after"],
+            encoding="utf-8-sig",
+            keep_default_na=False,
+        )
         corrected = changes.loc[changes.action.eq("corrected")]
         frame.loc[corrected.source_index, "text"] = corrected.text_after.to_numpy()
         frame = frame.drop(index=changes.loc[changes.action.eq("excluded"), "source_index"])
@@ -110,7 +115,7 @@ def export(args):
     del rnn_ckpt, char_ckpt
     logger.info("Loading saved best LR: %s", lr_path)
     lr = joblib.load(lr_path)
-    predictor = EnsemblePredictor(rnn, char, lr, vocab, char_vocab, {"rnn": .4, "char": .4, "lr": .2}, encoding)
+    predictor = EnsemblePredictor(rnn, char, lr, vocab, char_vocab, {"rnn": 0.4, "char": 0.4, "lr": 0.2}, encoding)
     errors = {}
     sample_count = 64
     for part in ("dev", "test"):
@@ -132,8 +137,7 @@ def export(args):
     best_score, weights = -1, None
     for rnn_step in range(11):
         for char_step in range(11 - rnn_step):
-            candidate = {"rnn": rnn_step / 10, "char": char_step / 10,
-                         "lr": (10 - rnn_step - char_step) / 10}
+            candidate = {"rnn": rnn_step / 10, "char": char_step / 10, "lr": (10 - rnn_step - char_step) / 10}
             blend = sum(candidate[key] * dev_parts[key] for key in candidate)
             score = float(f1_score(y_dev, blend.argmax(1), average="macro", labels=[0, 1, 2]))
             if score > best_score:
@@ -147,29 +151,46 @@ def export(args):
     probabilities /= probabilities.sum(axis=1, keepdims=True)
     y_test = frame.iloc[split["test"]].is_spam1_or_clickbait2.to_numpy()
     pred = probabilities.argmax(1)
-    metrics = {"accuracy": float(accuracy_score(y_test, pred)),
-               "f1_macro": float(f1_score(y_test, pred, average="macro", labels=[0, 1, 2])),
-               "f1_weighted": float(f1_score(y_test, pred, average="weighted", labels=[0, 1, 2]))}
+    metrics = {
+        "accuracy": float(accuracy_score(y_test, pred)),
+        "f1_macro": float(f1_score(y_test, pred, average="macro", labels=[0, 1, 2])),
+        "f1_weighted": float(f1_score(y_test, pred, average="weighted", labels=[0, 1, 2])),
+    }
     source_names = ["rnn_best.pt", "char_best.pt", "ensemble_weights.csv", "model_comparison.csv"]
     meta = {
-        "name": "rnn-cnn-lr", "version": args.version, "framework": "PyTorch + scikit-learn",
+        "name": "rnn-cnn-lr",
+        "version": args.version,
+        "framework": "PyTorch + scikit-learn",
         "trained_at": datetime.fromtimestamp((args.source / "rnn_best.pt").stat().st_mtime, UTC).isoformat(),
         "exported_at": datetime.now(UTC).isoformat(),
-        "sklearn_version": sklearn.__version__, "torch_version": str(torch.__version__),
+        "sklearn_version": sklearn.__version__,
+        "torch_version": str(torch.__version__),
         "metrics": metrics,
-        "dataset": {"file": args.data.name, "sha256": file_hash(args.data),
-                    "split_id": summary["split_id"], "protocol": summary["protocol"],
-                    "partitions": summary["partitions"],
-                    "metrics_note": "Measured test metrics for the new blend, using verified cached neural probabilities and saved LR. Near-duplicates/source overlap not fully eliminated; not ASR quality."},
-        "config": {"weights": weights, "selection_split": "dev", "selection_metric": "f1_macro",
-                   "dev_f1_macro": best_score,
-                   "original_notebook_dev_f1_macro": float(weights_row["macro-F1 (валидация)"]),
-                   "lr_C": float(lr.named_steps["clf"].C), "normalizer": "notebook-clean-text-v1",
-                   "variant": "notebook-neural-models-plus-saved-best-lr",
-                   "lr_source_sha256": file_hash(lr_path),
-                   "parity": {"sample_rows_per_split": sample_count, "max_absolute_errors": errors},
-                   "source_notebook_sha256": file_hash(notebook_path),
-                   "source_artifact_sha256": {name: file_hash(args.source / name) for name in source_names}},
+        "dataset": {
+            "file": args.data.name,
+            "sha256": file_hash(args.data),
+            "split_id": summary["split_id"],
+            "protocol": summary["protocol"],
+            "partitions": summary["partitions"],
+            "metrics_note": (
+                "Measured test metrics for the new blend, using verified cached neural probabilities and saved LR. "
+                "Near-duplicates/source overlap not fully eliminated; not ASR quality."
+            ),
+        },
+        "config": {
+            "weights": weights,
+            "selection_split": "dev",
+            "selection_metric": "f1_macro",
+            "dev_f1_macro": best_score,
+            "original_notebook_dev_f1_macro": float(weights_row["macro-F1 (валидация)"]),
+            "lr_C": float(lr.named_steps["clf"].C),
+            "normalizer": "notebook-clean-text-v1",
+            "variant": "notebook-neural-models-plus-saved-best-lr",
+            "lr_source_sha256": file_hash(lr_path),
+            "parity": {"sample_rows_per_split": sample_count, "max_absolute_errors": errors},
+            "source_notebook_sha256": file_hash(notebook_path),
+            "source_artifact_sha256": {name: file_hash(args.source / name) for name in source_names},
+        },
     }
     path = save_bundle(args.out, predictor, meta)
     logger.info("EXPORTED %s; weights %s; test metrics %s (no models retrained)", path, weights, metrics)

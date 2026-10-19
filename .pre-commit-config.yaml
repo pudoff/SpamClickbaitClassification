@@ -1,0 +1,15 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: Ruff lint
+        entry: poetry run ruff check --config pyproject.toml
+        language: system
+        types_or: [python, pyi]
+        files: ^(inference-api/|Datasets/scripts/)
+      - id: ruff-format
+        name: Ruff format check
+        entry: poetry run ruff format --config pyproject.toml --check
+        language: system
+        types_or: [python, pyi]
+        files: ^(inference-api/|Datasets/scripts/)

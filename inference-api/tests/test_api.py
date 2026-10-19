@@ -6,11 +6,10 @@ import json
 import joblib
 import numpy as np
 import pytest
-from fastapi.testclient import TestClient
-
 from app.config import Settings
 from app.main import create_app
 from app.text import clean_text
+from fastapi.testclient import TestClient
 from training.train import BASE_CONFIG, build_pipeline
 
 TOY_DATA = [
