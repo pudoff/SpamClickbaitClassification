@@ -13,15 +13,18 @@
 ├── inference-api/                 ← FastAPI-сервис классификатора (описание в inference-api/README.md)
 │   ├── app/                       ←   main.py (эндпоинты) · schemas.py (pydantic) · model.py · text.py · config.py
 │   ├── training/train.py          ←   обучение модели из df.csv → models/model.joblib + model_meta.json
+│   ├── training/export_ensemble.py ←  экспорт готового ансамбля → models/ensemble/manifest.json
 │   ├── tests/                     ←   тесты API через TestClient
 │   ├── notebooks/                 ←   запуск из Jupyter/Colab (uvicorn + nest_asyncio)
 │   ├── models/                    ←   артефакты модели (не в git)
 │   └── Dockerfile
 ├── Datasets/
 │   ├── df.csv                     ← текстовый датасет (Git LFS): text, is_spam1_or_clickbait2 (0 обычное, 1 спам, 2 кликбейт)
-│   ├── model_mlflow.ipynb         ← EDA, «Модель 2» (TF-IDF word+char → LogReg), эксперименты MLflow
-│   ├── mlflow.db                  ← журнал экспериментов MLflow (SQLite)
-│   └── test_model.py              ← pytest-проверки качества модели из ноутбука
+│   ├── dataset_description.md/html ← описание данных и результаты моделей
+│   ├── task1_report.md/html       ← короткий отчёт для преподавателя
+│   ├── notebooks/                ← model.ipynb, model_mlflow.ipynb, model_rnn.ipynb
+│   ├── scripts/                  ← EDA, загрузчик, перевод, рендер отчёта, requirements.txt
+│   └── outputs/                  ← графики, модели, CSV/NPY, HTML-профили, mlflow.db, test_model.py, eda/
 ├── ConceptAndArchitecture/
 │   ├── до ревью/                  ← версия 1 (история): docx, pptx, прототип audio_module
 │   └── после ревью/               ← версия 2 — актуальный концепт, архитектура, OpenAPI-контракт
@@ -30,12 +33,11 @@
 
 ## Как запустить
 
-Нужен только Docker Desktop. Все команды выполняются из корня репозитория.
+Нужны Docker Desktop и комплект ансамбля в `inference-api/models/ensemble/`. Все команды выполняются из корня репозитория. В этой рабочей копии комплект подготовлен; он исключён из Git. На другом компьютере передайте его отдельно или выполните экспорт по [инструкции сервиса](inference-api/README.md).
 
 ```bash
-cp .env.example .env                                  # необязательно: свои порт, пороги, конфигурация
-docker compose --profile train run --rm trainer       # 1. обучить модель (конфигурация exp4, ~15 минут, ~6 ГБ RAM)
-docker compose up -d --build                          # 2. поднять API
+# В .env: MODEL_FILE=ensemble/manifest.json
+docker compose up -d --build inference-api
 ```
 
 Откройте **http://localhost:8000/docs** — Swagger UI, где можно вызвать все эндпоинты.
@@ -56,7 +58,7 @@ docker compose run --rm inference-api ruff check .     # линтер
 docker compose down                                    # остановить
 ```
 
-Быстрое обучение на подвыборке (для проверки, около минуты):
+Отдельный LR-тренер для экспериментов (не создаёт ансамбль и не переключает API):
 
 ```bash
 docker compose --profile train run --rm trainer python -m training.train \
@@ -73,12 +75,14 @@ cd inference-api && ../.venv/Scripts/python -m pytest -q
 
 ## Что сделано на данный момент
 
+Учебные документы: [Model Card](MODEL_CARD.md) · [BPMN retraining-цикла — просмотр](Reports/2026-10-18/bpmn/retraining_cycle.html) · [BPMN — исходник](Reports/2026-10-18/bpmn/retraining_cycle.bpmn) · [Poetry, линтеры и pre-commit — самостоятельная инструкция](Reports/2026-10-18/homework_production_manual.md).
+
 | Часть | Статус |
 |---|---|
 | Концепт и архитектура v2 после перекрёстного ревью | ✅ готово, ждёт согласования командой |
 | Текстовый датасет `df.csv` (Git LFS, ~380 МБ: 642 тыс. строк, после удаления дублей 456 тыс.) | ✅ последняя версия от 07.10.2026 |
-| «Модель 2»: TF-IDF word+char → LogisticRegression, эксперименты в MLflow | ✅ ноутбук и pytest-проверки (`Datasets/test_model.py`) |
-| Сервис инференса `inference-api` (FastAPI, Swagger, pydantic-валидация) | ✅ `/predict`, `/healthcheck`, `/model-info`, тесты, Docker Compose; модель `exp4`: macro-F1 0.804, F1 кликбейта 0.643 |
+| «Модель 2»: TF-IDF word+char → LogisticRegression, эксперименты в MLflow | ✅ ноутбук и pytest-проверки (`Datasets/outputs/test_model.py`) |
+| Сервис инференса `inference-api` (FastAPI, Swagger, pydantic-валидация) | ✅ RNN/CNN из второго ноутбука + сохранённая лучшая LR из первого; веса заново по dev; фактические метрики и состав через `/model-info` |
 | Воспроизводимое обучение в контейнере (`trainer`) | ✅ конфигурации из ноутбука: baseline, exp1–exp5 |
 | ASR (GigaAM-v3 + Silero VAD + определение языка) | ⏳ прототип `audio_module` в «до ревью», в сервис не подключён |
 | Аудио-API `/v1/classifications` по контракту `04-service-contract.openapi.yaml` | ⏳ не начато |

@@ -57,6 +57,14 @@ class LoadedModel:
 
 
 def load_model(model_path: Path, meta_path: Path) -> LoadedModel:
+    if model_path.suffix == ".json":
+        from app.ensemble import load_ensemble
+
+        pipeline, meta = load_ensemble(model_path)
+        model = LoadedModel(pipeline=pipeline, meta=meta, path=model_path,
+                            sha256=sha256_of(model_path), classes=[0, 1, 2])
+        logger.info("ансамбль %s загружен из %s; веса %s", model.model_version, model_path, pipeline.weights)
+        return model
     pipeline = load_artifact(model_path)
     classes = [int(c) for c in np.asarray(pipeline.classes_)]
     if sorted(classes) != sorted(LABELS):

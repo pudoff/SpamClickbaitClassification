@@ -98,7 +98,7 @@ class ModelInfo(BaseModel):
     artifact: str
     artifact_sha256: str
     classes: dict[str, Label]
-    metrics: Metrics | None = Field(description="Метрики на отложенной выборке. Оценка завышена, см. 01-review R-36.")
+    metrics: Metrics | None = Field(description="Метрики test из экспорта; протокол и ограничения указаны в dataset/config.")
     dataset: dict | None = None
     config: dict | None = None
     policy: Policy

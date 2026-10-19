@@ -1,8 +1,10 @@
-# Рантайм сервиса и обучения. Версии совпадают с окружением команды (корневой requirements.txt),
-# чтобы model.pkl из ноутбука и модель из тренера загружались одинаково.
+# Рантайм сервиса и обучения. sklearn совпадает с проверенным экспортом ансамбля;
+# корневой requirements.txt — исторический список окружения, не источник версии модели.
 fastapi==0.142.2
 uvicorn[standard]==0.54.0
 pydantic==2.13.5
-scikit-learn==1.9.1
+scikit-learn==1.8.0
 joblib==1.6.0
 numpy>=1.24,<2.4
+# CPU wheels are installed explicitly in Dockerfile; keep notebook-compatible layers.
+torch==2.10.0

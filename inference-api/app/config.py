@@ -22,7 +22,7 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> "Settings":
-        model_path = Path(os.getenv("MODEL_PATH", "models/model.joblib"))
+        model_path = Path(os.getenv("MODEL_PATH", "models/ensemble/manifest.json"))
         meta_path = Path(os.getenv("MODEL_META_PATH", model_path.with_name("model_meta.json")))
         return cls(
             model_path=model_path,

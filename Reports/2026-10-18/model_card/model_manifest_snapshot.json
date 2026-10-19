@@ -1,0 +1,118 @@
+{
+  "format": "spam-clickbait-ensemble-v1",
+  "classes": [
+    0,
+    1,
+    2
+  ],
+  "weights": {
+    "rnn": 0.5,
+    "char": 0.2,
+    "lr": 0.3
+  },
+  "encoding": {
+    "max_len": 256,
+    "max_chars": 256,
+    "vocab_limit": 60000,
+    "min_freq": 2
+  },
+  "files": {
+    "rnn": {
+      "path": "rnn.pt",
+      "sha256": "4cb2ebfffb44c0fb6fff4376f54f09a7dfdb0e186cb4b69a46084fe1b7d5346b"
+    },
+    "char": {
+      "path": "char.pt",
+      "sha256": "ef1448dfaefaa09fbae95a34cf649224f25addcd6597bbef7ead4075208d671e"
+    },
+    "lr": {
+      "path": "lr.joblib",
+      "sha256": "e344313fa35f2e72bb875bda17e41149373bd08866560c63c193afabcb8718f1"
+    },
+    "vocab": {
+      "path": "vocab.json",
+      "sha256": "7a34e4e16a2c83419297c09d7b1967b2ec8e87a596bf4c0863e11ba6338a44b8"
+    }
+  },
+  "meta": {
+    "name": "rnn-cnn-lr",
+    "version": "ensemble-20261018",
+    "framework": "PyTorch + scikit-learn",
+    "trained_at": "2026-10-12T01:48:21.037124+00:00",
+    "exported_at": "2026-10-18T15:45:31.612729+00:00",
+    "sklearn_version": "1.8.0",
+    "torch_version": "2.10.0+cpu",
+    "metrics": {
+      "accuracy": 0.8693539099389612,
+      "f1_macro": 0.8347251007119535,
+      "f1_weighted": 0.8691651238285386
+    },
+    "dataset": {
+      "file": "df.csv",
+      "sha256": "81f71b60838303dc9364eea343379a1c59aea9469bd52c46f5041e282c06430c",
+      "split_id": "8fcc58bc420af8aed5a8d3b514aafc8bcb6c70188ab60b0a97e8fc16cd563acd",
+      "protocol": "grouped-fit-dev-test-macro-v1",
+      "partitions": {
+        "fit": {
+          "rows": 312020,
+          "groups": 305685,
+          "class_counts": {
+            "0": 192826,
+            "1": 69239,
+            "2": 49955
+          }
+        },
+        "dev": {
+          "rows": 34521,
+          "groups": 33966,
+          "class_counts": {
+            "0": 21312,
+            "1": 7691,
+            "2": 5518
+          }
+        },
+        "test": {
+          "rows": 86830,
+          "groups": 84913,
+          "class_counts": {
+            "0": 53674,
+            "1": 19284,
+            "2": 13872
+          }
+        }
+      },
+      "metrics_note": "Measured test metrics for the new blend, using verified cached neural probabilities and saved LR. Near-duplicates/source overlap not fully eliminated; not ASR quality."
+    },
+    "config": {
+      "weights": {
+        "rnn": 0.5,
+        "char": 0.2,
+        "lr": 0.3
+      },
+      "selection_split": "dev",
+      "selection_metric": "f1_macro",
+      "dev_f1_macro": 0.8330174905227369,
+      "original_notebook_dev_f1_macro": 0.8317288252820808,
+      "lr_C": 1.0,
+      "normalizer": "notebook-clean-text-v1",
+      "variant": "notebook-neural-models-plus-saved-best-lr",
+      "lr_source_sha256": "b403496ffa09d576dbbcc7428143e1aebff21c38909f5f38d9e6274b6a2b0d37",
+      "parity": {
+        "sample_rows_per_split": 64,
+        "max_absolute_errors": {
+          "rnn_dev": 1.7881393432617188e-07,
+          "char_dev": 5.960464477539063e-08,
+          "rnn_test": 1.1920928955078125e-07,
+          "char_test": 5.960464477539063e-08
+        }
+      },
+      "source_notebook_sha256": "50a325107c2bbab6753e9cb711362b952c4c37ef2ca5583c72dab622f7cb04a0",
+      "source_artifact_sha256": {
+        "rnn_best.pt": "139d0e5965782cd8274a4e76a54e190c4bdae466e16f643fd464b2d4b00d8ff9",
+        "char_best.pt": "a9a33409c48be8f2070d69fb7aeff87371b351b6db49ee06d8906d9b94f7eb98",
+        "ensemble_weights.csv": "9d96ccde9de6199a430c8a6b5f09c17ec4528237d4bad2f1e0e9cb64e89336c2",
+        "model_comparison.csv": "970c8702a3d6db6ab178acb718a15e64d3035ca15bd1896112f515894396394d"
+      }
+    }
+  }
+}

@@ -10,6 +10,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /srv
 
 COPY requirements.txt requirements-dev.txt ./
+RUN pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
 RUN pip install -r requirements-dev.txt
 
 COPY app ./app
@@ -20,7 +21,7 @@ COPY pyproject.toml ./
 RUN useradd --create-home --uid 1000 appuser && mkdir -p /models && chown appuser /models /srv
 USER appuser
 
-ENV MODEL_PATH=/models/model.joblib
+ENV MODEL_PATH=/models/ensemble/manifest.json
 EXPOSE 8000
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=3 \

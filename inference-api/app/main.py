@@ -37,7 +37,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         summary="Классификация текста сообщения на spam / clickbait / normal.",
         description=(
             "Текстовая часть `inference-api` из `ConceptAndArchitecture/после ревью/.../03-final-architecture.md`. "
-            "Модель — TF-IDF (word + char_wb) + LogisticRegression («Модель 2» из `Datasets/model_mlflow.ipynb`). "
+            "По умолчанию — ансамбль RNN + char-CNN + TF-IDF/LogisticRegression из `Datasets/2_RNN_CNN_LR.ipynb`; "
+            "веса выбраны на dev. Загруженная версия и состав доступны через /model-info. "
             "Низкая уверенность возвращается как `uncertain`, а не как `normal`."
         ),
         lifespan=lifespan,
@@ -95,7 +96,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             version=model.version,
             model_version=model.model_version,
             trained_at=datetime.fromisoformat(trained_at) if trained_at else None,
-            framework="scikit-learn",
+            framework=meta.get("framework", "scikit-learn"),
             sklearn_version=meta.get("sklearn_version"),
             artifact=model.path.name,
             artifact_sha256=model.sha256,

@@ -1,6 +1,6 @@
 # Docker Compose проекта (03-final-architecture.md §11.1).
 #
-#   1) Обучить модель (один раз, ~15 минут):  docker compose --profile train run --rm trainer
+#   1) Экспортировать готовый ансамбль: см. inference-api/README.md
 #   2) Поднять сервис:                                 docker compose up -d --build
 #   3) Swagger UI:                                     http://localhost:8000/docs
 #
@@ -18,7 +18,7 @@ services:
       - path: .env
         required: false
     environment:
-      MODEL_PATH: /models/${MODEL_FILE:-model.joblib}
+      MODEL_PATH: /models/${MODEL_FILE:-ensemble/manifest.json}
     volumes:
       - ./inference-api/models:/models:ro
     # Только 127.0.0.1: на сервере Swagger открывается через SSH-туннель (§11.1).

@@ -14,9 +14,11 @@ Thumbs.db
 # Pycache
 __pycache__/
 *.pyc
-Datasets/mlruns/
-Datasets/*.pkl
-Datasets/*.bak_*
+Datasets/outputs/mlruns/
+Datasets/outputs/filtering/
+Datasets/outputs/validation/
+Datasets/outputs/*.pkl
+Datasets/outputs/*.bak_*
 *.pkl
 
 

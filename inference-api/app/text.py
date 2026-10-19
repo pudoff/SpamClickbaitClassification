@@ -1,7 +1,7 @@
-"""Нормализация текста — побайтная копия clean_text из Datasets/model_mlflow.ipynb.
+"""Нормализация текста — побайтная копия clean_text из Datasets/notebooks/model_mlflow.ipynb.
 
 Функция обязана совпадать с той, на которой обучалась модель: любое расхождение
-даёт train/serve skew. Известная особенность (см. Datasets/test_model.py, тест 4):
+даёт train/serve skew. Известная особенность (см. Datasets/outputs/test_model.py, тест 4):
 URL_RE / MENTION_RE / HTML_RE применяются до lower(), поэтому в КАПСЕ ссылки
 маскируются не всегда. Исправлять только вместе с переобучением модели.
 """

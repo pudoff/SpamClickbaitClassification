@@ -1,4 +1,4 @@
-"""Обучение «Модели 2» из Datasets/model_mlflow.ipynb и сохранение артефакта для сервиса.
+"""Обучение «Модели 2» из Datasets/notebooks/model_mlflow.ipynb и сохранение артефакта для сервиса.
 
 Запуск в Docker (рекомендуется — та же версия sklearn, что у сервиса):
     docker compose --profile train run --rm trainer
@@ -70,7 +70,7 @@ CONFIGS = {
     "exp1": EXP1_CONFIG,
     "exp2": EXP2_CONFIG,
     "exp3": EXP3_CONFIG,
-    # Лучший прогон в Datasets/mlflow.db: run_7_best_confusion_matrix -> best_run=run_5_exp4_union_weights
+    # Лучший прогон в Datasets/outputs/mlflow.db: run_7_best_confusion_matrix -> best_run=run_5_exp4_union_weights
     "exp4": EXP4_CONFIG,
     "exp5": EXP5_CONFIG,
 }
