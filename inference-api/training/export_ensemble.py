@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 import sklearn
 import torch
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import f1_score
 from threadpoolctl import threadpool_limits
 
 from app.artifacts import sha256_of
@@ -32,6 +32,7 @@ from app.ensemble import (
 )
 from app.labels import CLASS_IDS, N_CLASSES
 from app.text import clean_text
+from training.metrics import evaluate
 from training.train import load_fixed_csv
 
 logger = logging.getLogger("export-ensemble")
@@ -158,12 +159,7 @@ def export(args):
         test_parts["lr"] = lr.predict_proba(texts.iloc[split["test"]].tolist())
     probabilities = blend(test_parts, weights)
     y_test = frame.iloc[split["test"]].is_spam1_or_clickbait2.to_numpy()
-    pred = probabilities.argmax(1)
-    metrics = {
-        "accuracy": float(accuracy_score(y_test, pred)),
-        "f1_macro": float(f1_score(y_test, pred, average="macro", labels=list(CLASS_IDS))),
-        "f1_weighted": float(f1_score(y_test, pred, average="weighted", labels=list(CLASS_IDS))),
-    }
+    metrics = evaluate(y_test, probabilities.argmax(1), per_class=False, digits=None)
     source_names = ["rnn_best.pt", "char_best.pt", "ensemble_weights.csv", "model_comparison.csv"]
     meta = {
         "name": "rnn-cnn-lr",

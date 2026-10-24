@@ -2,10 +2,11 @@
 
 import numpy as np
 import pytest
-from sklearn.metrics import f1_score
+from sklearn.metrics import accuracy_score, f1_score
 
 from app.ensemble import blend
 from training.export_ensemble import select_weights
+from training.metrics import evaluate
 
 
 @pytest.fixture
@@ -45,3 +46,14 @@ def test_select_weights_takes_first_maximum():
     weights, score = select_weights({"rnn": same, "char": same, "lr": same}, np.array([0, 1, 2, 0]))
     assert weights == {"rnn": 0.0, "char": 0.0, "lr": 1.0}
     assert score == 1.0
+
+
+def test_export_metrics_match_legacy_dict():
+    rng = np.random.default_rng(11)
+    y_true, y_pred = rng.integers(0, 3, size=300), rng.integers(0, 3, size=300)
+    legacy = {
+        "accuracy": float(accuracy_score(y_true, y_pred)),
+        "f1_macro": float(f1_score(y_true, y_pred, average="macro", labels=[0, 1, 2])),
+        "f1_weighted": float(f1_score(y_true, y_pred, average="weighted", labels=[0, 1, 2])),
+    }
+    assert list(evaluate(y_true, y_pred, per_class=False, digits=None).items()) == list(legacy.items())

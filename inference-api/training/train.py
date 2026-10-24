@@ -11,13 +11,13 @@ import numpy as np
 import sklearn
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import FeatureUnion, Pipeline
 
 from app.artifacts import sha256_of
 from app.labels import LABELS
 from app.text import clean_text
+from training.metrics import evaluate
 
 logger = logging.getLogger("train")
 
@@ -156,23 +156,6 @@ def build_pipeline(cfg: dict, y_train: np.ndarray) -> Pipeline:
             ),
         ]
     )
-
-
-def evaluate(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
-    labels = sorted(LABELS)
-    f1 = f1_score(y_true, y_pred, average=None, labels=labels)
-    precision = precision_score(y_true, y_pred, average=None, labels=labels, zero_division=0)
-    recall = recall_score(y_true, y_pred, average=None, labels=labels, zero_division=0)
-    metrics = {
-        "f1_macro": f1_score(y_true, y_pred, average="macro"),
-        "f1_weighted": f1_score(y_true, y_pred, average="weighted"),
-        "accuracy": accuracy_score(y_true, y_pred),
-    }
-    for idx, name in LABELS.items():
-        metrics[f"f1_{name}"] = f1[idx]
-        metrics[f"precision_{name}"] = precision[idx]
-        metrics[f"recall_{name}"] = recall[idx]
-    return {k: round(float(v), 4) for k, v in metrics.items()}
 
 
 def main() -> None:
