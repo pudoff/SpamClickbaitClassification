@@ -4,7 +4,6 @@ Token order, truncation, surface features and network layers deliberately match
 the trained notebook. Changing them requires a new export and parity check.
 """
 
-import hashlib
 import json
 import os
 import re
@@ -17,6 +16,8 @@ import sklearn
 import torch
 from torch import nn
 from torch.nn import functional as F
+
+from app.artifacts import sha256_of
 
 WORD_RE = re.compile(r"[a-zа-я]+(?:'[a-zа-я]+)?")
 CYR = set("абвгдеёжзийклмнопрстуфхцчшщъыьэюя")
@@ -176,9 +177,8 @@ class CharCNN(nn.Module):
         return self.head(torch.cat([chars, surf], dim=1))
 
 
-def file_hash(path):
-    with Path(path).open("rb") as stream:
-        return hashlib.file_digest(stream, "sha256").hexdigest()
+# Старое имя: реэкспорт для внешних импортов.
+file_hash = sha256_of
 
 
 class EnsemblePredictor:
@@ -234,7 +234,7 @@ def load_ensemble(manifest_path):
         path = (manifest_path.parent / entry["path"]).resolve()
         if not path.is_relative_to(manifest_path.parent.resolve()):
             raise ValueError("ensemble files must be inside the bundle directory")
-        if file_hash(path) != entry["sha256"]:
+        if sha256_of(path) != entry["sha256"]:
             raise ValueError(f"checksum mismatch: {key}")
         paths[key] = path
     threads = int(os.getenv("TORCH_NUM_THREADS", "2"))
@@ -269,7 +269,7 @@ def save_bundle(folder, predictor, meta):
         json.dumps({"word": predictor.vocab, "char": predictor.char_vocab}, ensure_ascii=False), encoding="utf-8"
     )
     files = {
-        key: {"path": name, "sha256": file_hash(folder / name)}
+        key: {"path": name, "sha256": sha256_of(folder / name)}
         for key, name in {"rnn": "rnn.pt", "char": "char.pt", "lr": "lr.joblib", "vocab": "vocab.json"}.items()
     }
     manifest = {

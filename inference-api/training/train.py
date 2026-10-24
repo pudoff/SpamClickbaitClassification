@@ -15,7 +15,8 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import FeatureUnion, Pipeline
 
-from app.model import LABELS, sha256_of
+from app.artifacts import sha256_of
+from app.model import LABELS
 from app.text import clean_text
 
 logger = logging.getLogger("train")

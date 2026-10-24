@@ -1,38 +1,20 @@
 """Загрузка обученной модели (joblib/pickle) и политика решения (шаг 2)."""
 
-import hashlib
 import json
 import logging
-import pickle
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
-import joblib
 import numpy as np
 
+from app.artifacts import load_artifact, sha256_of
 from app.text import clean_text
 
 logger = logging.getLogger(__name__)
 
 # Кодировка меток датасета: Datasets/df.csv, поле is_spam1_or_clickbait2
 LABELS: dict[int, str] = {0: "normal", 1: "spam", 2: "clickbait"}
-
-
-def sha256_of(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as f:
-        for chunk in iter(lambda: f.read(1 << 20), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
-def load_artifact(path: Path):
-    """.joblib — из тренера; .pkl — артефакт из ноутбука (pickle.dump)."""
-    if path.suffix == ".pkl":
-        with path.open("rb") as f:
-            return pickle.load(f)
-    return joblib.load(path)
 
 
 @dataclass

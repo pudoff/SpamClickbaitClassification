@@ -20,13 +20,13 @@ import torch
 from sklearn.metrics import accuracy_score, f1_score
 from threadpoolctl import threadpool_limits
 
+from app.artifacts import sha256_of
 from app.ensemble import (
     CharCNN,
     Encoding,
     EnsemblePredictor,
     SpamClickbaitNet,
     build_vocabularies,
-    file_hash,
     save_bundle,
 )
 from app.text import clean_text
@@ -47,7 +47,7 @@ def restore_frame(data_path, scripts_dir):
     audit_summary = audit / "summary.json"
     if audit_summary.exists() and json.loads(audit_summary.read_text(encoding="utf-8")).get(
         "source_csv_sha256"
-    ) == file_hash(data_path):
+    ) == sha256_of(data_path):
         changes = pd.read_csv(
             audit / "changes.csv",
             usecols=["source_index", "action", "text_after"],
@@ -168,7 +168,7 @@ def export(args):
         "metrics": metrics,
         "dataset": {
             "file": args.data.name,
-            "sha256": file_hash(args.data),
+            "sha256": sha256_of(args.data),
             "split_id": summary["split_id"],
             "protocol": summary["protocol"],
             "partitions": summary["partitions"],
@@ -186,10 +186,10 @@ def export(args):
             "lr_C": float(lr.named_steps["clf"].C),
             "normalizer": "notebook-clean-text-v1",
             "variant": "notebook-neural-models-plus-saved-best-lr",
-            "lr_source_sha256": file_hash(lr_path),
+            "lr_source_sha256": sha256_of(lr_path),
             "parity": {"sample_rows_per_split": sample_count, "max_absolute_errors": errors},
-            "source_notebook_sha256": file_hash(notebook_path),
-            "source_artifact_sha256": {name: file_hash(args.source / name) for name in source_names},
+            "source_notebook_sha256": sha256_of(notebook_path),
+            "source_artifact_sha256": {name: sha256_of(args.source / name) for name in source_names},
         },
     }
     path = save_bundle(args.out, predictor, meta)
