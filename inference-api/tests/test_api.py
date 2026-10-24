@@ -4,36 +4,16 @@
 import json
 
 import joblib
-import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
-from app.config import Settings
 from app.main import create_app
-from app.text import clean_text
-from training.train import BASE_CONFIG, build_pipeline
-
-TOY_DATA = [
-    ("Вам одобрен кредит, перезвоните по номеру и получите деньги сегодня", 1),
-    ("Скидка 90 процентов только сегодня купите сейчас переходите по ссылке", 1),
-    ("Выиграйте приз отправьте данные карты для получения выигрыша", 1),
-    ("Ты не поверишь что случилось со звездой шок фото", 2),
-    ("Шок вы не поверите что она сделала смотрите до конца", 2),
-    ("Учёные в шоке никто не ожидал такого финала", 2),
-    ("Буду через десять минут возьми хлеба", 0),
-    ("Привет как дела давай встретимся завтра вечером", 0),
-    ("Отчёт отправил посмотри когда будет время", 0),
-] * 4
 
 
 @pytest.fixture(scope="module")
-def model_dir(tmp_path_factory):
+def model_dir(tmp_path_factory, toy_lr):
     path = tmp_path_factory.mktemp("models")
-    texts = [clean_text(t) for t, _ in TOY_DATA]
-    y = np.array([lb for _, lb in TOY_DATA])
-    cfg = {**BASE_CONFIG, "word_min_df": 1, "char_min_df": 1}
-    model = build_pipeline(cfg, y).fit(texts, y)
-    joblib.dump(model, path / "model.joblib")
+    joblib.dump(toy_lr, path / "model.joblib")
     meta = {
         "name": "tfidf-logreg",
         "version": "test",
@@ -46,10 +26,8 @@ def model_dir(tmp_path_factory):
 
 
 @pytest.fixture(scope="module")
-def client(model_dir):
-    settings = Settings(
-        model_path=model_dir / "model.joblib", meta_path=model_dir / "model_meta.json", tau=0.55, tau_spam=0.65
-    )
+def client(model_dir, make_settings):
+    settings = make_settings(model_dir / "model.joblib", model_dir / "model_meta.json")
     with TestClient(create_app(settings)) as c:
         yield c
 
@@ -106,9 +84,8 @@ def test_validation_errors(client, payload):
     assert client.post("/predict", json=payload).status_code == 422
 
 
-def test_service_without_model_reports_503(tmp_path):
-    settings = Settings(model_path=tmp_path / "nope.joblib", meta_path=tmp_path / "nope.json", tau=0.55, tau_spam=0.65)
-    with TestClient(create_app(settings)) as c:
+def test_service_without_model_reports_503(tmp_path, make_settings):
+    with TestClient(create_app(make_settings(tmp_path / "nope.joblib", tmp_path / "nope.json"))) as c:
         health = c.get("/healthcheck")
         assert health.status_code == 503
         assert health.json()["model_loaded"] is False

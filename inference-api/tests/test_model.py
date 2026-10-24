@@ -8,7 +8,6 @@ import pytest
 from fastapi.testclient import TestClient
 from sklearn.dummy import DummyClassifier
 
-from app.config import Settings
 from app.main import create_app
 from app.model import load_model
 
@@ -42,10 +41,9 @@ def test_wrong_classes_rejected(tmp_path):
         load_model(path, tmp_path / "missing.json")
 
 
-def test_unloaded_model_bodies(tmp_path):
+def test_unloaded_model_bodies(tmp_path, make_settings):
     joblib.dump(dummy([0, 1]), tmp_path / "model.joblib")
-    settings = Settings(model_path=tmp_path / "model.joblib", meta_path=tmp_path / "m.json", tau=0.55, tau_spam=0.65)
-    with TestClient(create_app(settings)) as client:
+    with TestClient(create_app(make_settings(tmp_path / "model.joblib"))) as client:
         health = client.get("/healthcheck")
         assert health.status_code == 503
         body = health.json()

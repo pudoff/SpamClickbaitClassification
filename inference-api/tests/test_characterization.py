@@ -8,7 +8,6 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
-from app.config import Settings
 from app.main import create_app
 from app.model import decide
 from tests.snapshot import dump, snapshot
@@ -21,9 +20,8 @@ BUNDLE_FILES = {"rnn": "rnn.pt", "char": "char.pt", "lr": "lr.joblib", "vocab": 
 ENCODING_KEYS = ["max_len", "max_chars", "vocab_limit", "min_freq"]
 
 
-def test_openapi_matches_snapshot(tmp_path):
-    settings = Settings(model_path=tmp_path / "nope.json", meta_path=tmp_path / "nope.json", tau=0.55, tau_spam=0.65)
-    schema = TestClient(create_app(settings)).get("/openapi.json").json()
+def test_openapi_matches_snapshot(tmp_path, make_settings):
+    schema = TestClient(create_app(make_settings(tmp_path / "nope.json"))).get("/openapi.json").json()
     assert dump(schema) == snapshot("openapi.json", schema)
 
 
