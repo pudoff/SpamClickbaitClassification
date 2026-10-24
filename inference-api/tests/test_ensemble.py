@@ -1,4 +1,4 @@
-"""Exercise exported ensembles through the same loader and endpoints as production."""
+"""Экспортированный ансамбль через тот же загрузчик и эндпоинты, что в рабочем сервисе."""
 
 import json
 import shutil
@@ -18,7 +18,7 @@ def test_bundle_roundtrip_and_weighted_probabilities(ensemble_bundle):
     path, original = ensemble_bundle
     restored, _ = load_ensemble(path)
     texts = [clean_text("Вам одобрен кредит срочно позвоните"), "", "неизвестноеслово", " NUM "]
-    # Independent weighted sum before serialization vs public predictor after loading.
+    # Независимая взвешенная сумма до сохранения против публичного predict_proba после загрузки.
     parts = original.component_probabilities(texts)
     expected = 0.4 * parts["rnn"] + 0.4 * parts["char"] + 0.2 * parts["lr"]
     actual = restored.predict_proba(texts)

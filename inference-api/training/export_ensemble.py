@@ -1,7 +1,7 @@
-"""Export saved RNN/CNN and the best saved LR, selecting blend weights on dev.
+"""Экспорт сохранённых RNN/CNN и лучшей сохранённой LR; веса смеси выбираются на dev.
 
-The notebook's original LR was not saved. Its refit was not numerically equivalent,
-so this is a separately versioned ensemble of existing frozen model artifacts.
+Исходная LR ноутбука не сохранялась, а её переобучение не совпадало численно,
+поэтому это отдельно версионируемый ансамбль из уже замороженных артефактов.
 """
 
 import argparse
@@ -57,8 +57,8 @@ class Sources:
 def restore_frame(data_path, filter_dataset):
     texts, labels, _ = load_fixed_csv(data_path)
     frame = pd.DataFrame({"text": texts, "is_spam1_or_clickbait2": labels})
-    # Reuse the verified audit when available; split fingerprint below checks the
-    # reconstructed texts/labels/order. Otherwise perform the same filters anew.
+    # Используем проверенный аудит, если он есть: отпечаток сплита ниже проверит
+    # восстановленные тексты, метки и порядок. Иначе применяем те же фильтры заново.
     audit = data_path.parent / "outputs/filtering/audit_2026-10-11"
     audit_summary = audit / "summary.json"
     if audit_summary.exists() and json.loads(audit_summary.read_text(encoding="utf-8")).get(
@@ -82,11 +82,11 @@ def restore_frame(data_path, filter_dataset):
 
 def check_close(actual, expected, name):
     if actual.shape != expected.shape:
-        raise ValueError(f"{name}: probability shape mismatch")
+        raise ValueError(f"{name}: не совпадает форма массива вероятностей")
     error = float(np.max(np.abs(actual - expected)))
-    logger.info("parity %s: max absolute error %.9g", name, error)
+    logger.info("совпадение %s: максимальная абсолютная ошибка %.9g", name, error)
     if not np.allclose(actual, expected, atol=5e-6, rtol=1e-5):
-        raise ValueError(f"{name}: predictions differ from notebook (max error {error}); export aborted")
+        raise ValueError(f"{name}: предсказания расходятся с ноутбуком (макс. ошибка {error}); экспорт прерван")
     return error
 
 
@@ -110,34 +110,34 @@ def load_sources(args):
     summary = json.loads((args.source / "split/summary.json").read_text(encoding="utf-8"))
     lr_summary = json.loads((lr_path.parent / "split/summary.json").read_text(encoding="utf-8"))
     if lr_summary["split_id"] != summary["split_id"]:
-        raise ValueError("saved LR and neural models must have the same fit/dev/test")
+        raise ValueError("сохранённая LR и нейросети должны быть обучены на одних fit/dev/test")
     with (args.source / "ensemble_weights.csv").open(encoding="utf-8-sig", newline="") as stream:
         rows = list(csv.DictReader(stream))
     if len(rows) != 1 or rows[0]["split_id"] != summary["split_id"]:
-        raise ValueError("ensemble weights and split are from different runs")
+        raise ValueError("веса ансамбля и сплит из разных запусков")
     checkpoints = {
         key: torch.load(args.source / f"{key}_best.pt", map_location="cpu", weights_only=False) for key in CACHED
     }
     for checkpoint in checkpoints.values():
         if checkpoint.get("split_id") != summary["split_id"] or checkpoint.get("evaluation_split") != "dev":
-            raise ValueError("checkpoint must be selected on dev from the same split")
+            raise ValueError("чекпойнт должен быть выбран на dev того же сплита")
     sources = Sources(summary, rows[0], lr_path, args.data.parent / "2_RNN_CNN_LR.ipynb")
     return sources, checkpoints
 
 
 def restore_models(fit_texts, checkpoints, lr_path):
     """Словари по fit, сети из чекпойнтов и сохранённая LR; веса смеси — временные, до select_weights."""
-    logger.info("Restoring vocabularies from %d fit rows", len(fit_texts))
+    logger.info("восстанавливаем словари по %d строкам fit", len(fit_texts))
     encoding = Encoding()
     vocab, char_vocab = build_vocabularies(fit_texts, encoding)
     rnn_ckpt = checkpoints["rnn"]
     if len(vocab) != rnn_ckpt["vocab_size"] or len(char_vocab) != rnn_ckpt["char_vocab_size"]:
-        raise ValueError("vocabulary dimensions differ from checkpoint")
+        raise ValueError("размеры словарей не совпадают с чекпойнтом")
     rnn = SpamClickbaitNet(len(vocab), len(char_vocab))
     char = CharCNN(len(char_vocab))
     rnn.load_state_dict(rnn_ckpt["model_state"])
     char.load_state_dict(checkpoints["char"]["model_state"])
-    logger.info("Loading saved best LR: %s", lr_path)
+    logger.info("загружаем лучшую сохранённую LR: %s", lr_path)
     lr = joblib.load(lr_path)
     return EnsemblePredictor(rnn, char, lr, vocab, char_vocab, {"rnn": 0.4, "char": 0.4, "lr": 0.2}, encoding)
 
@@ -211,31 +211,31 @@ def build_meta(args, sources, lr, weights, dev_score, metrics, parity_errors):
 def export(args):
     filter_dataset, make_data_splits = import_dataset_scripts(args.data)
     sources, checkpoints = load_sources(args)
-    logger.info("Restoring filtered corpus and checking split identity")
+    logger.info("восстанавливаем отфильтрованный корпус и проверяем идентичность сплита")
     frame = restore_frame(args.data, filter_dataset)
     split = make_data_splits(frame, clean_text)
     if split["summary"]["split_id"] != sources.summary["split_id"]:
-        raise ValueError("dataset/normalization/filtering changed since the recorded notebook run")
+        raise ValueError("датасет, нормализация или фильтрация изменились после записанного запуска ноутбука")
     texts = frame.text.map(clean_text)
     labels = frame.is_spam1_or_clickbait2
     predictor = restore_models(texts.iloc[split["fit"]].tolist(), checkpoints, sources.lr_path)
     del checkpoints  # веса уже в сетях; освобождаем память до инференса
     parity_errors = verify_parity(predictor, texts, split, args.source)
 
-    logger.info("Selecting weights on dev with frozen models; no model refitting")
+    logger.info("выбираем веса на dev по замороженным моделям, без переобучения")
     dev_parts = split_parts(args.source, "dev", predictor.lr, texts.iloc[split["dev"]].tolist(), args.threads)
     y_dev = labels.iloc[split["dev"]].to_numpy()
     if any(value.shape != (len(y_dev), N_CLASSES) for value in dev_parts.values()):
-        raise ValueError("dev probabilities do not match the split")
+        raise ValueError("вероятности на dev не соответствуют сплиту")
     weights, dev_score = select_weights(dev_parts, y_dev)
     predictor.weights = weights
-    logger.info("Frozen weights %s, dev macro-F1 %.8f; evaluating test once", weights, dev_score)
+    logger.info("веса зафиксированы: %s, macro-F1 на dev %.8f; однократная оценка на test", weights, dev_score)
     test_parts = split_parts(args.source, "test", predictor.lr, texts.iloc[split["test"]].tolist(), args.threads)
     metrics = evaluate_test(test_parts, weights, labels.iloc[split["test"]].to_numpy())
 
     meta = build_meta(args, sources, predictor.lr, weights, dev_score, metrics, parity_errors)
     path = save_bundle(args.out, predictor, meta)
-    logger.info("EXPORTED %s; weights %s; test metrics %s (no models retrained)", path, weights, metrics)
+    logger.info("ЭКСПОРТИРОВАНО %s; веса %s; метрики test %s (модели не переобучались)", path, weights, metrics)
     return path
 
 
@@ -244,12 +244,14 @@ def main():
     parser.add_argument("--data", type=Path, default=Path("../Datasets/df.csv"))
     parser.add_argument("--source", type=Path, default=Path("../Datasets/outputs/validation/2_RNN_CNN_LR"))
     parser.add_argument("--out", type=Path, default=Path("models/ensemble"))
-    parser.add_argument("--lr-model", type=Path, default=None, help="saved best LR with sibling split/summary.json")
+    parser.add_argument(
+        "--lr-model", type=Path, default=None, help="сохранённая лучшая LR; рядом должен лежать split/summary.json"
+    )
     parser.add_argument("--version", default="ensemble-20261018")
     parser.add_argument("--threads", type=int, default=2)
     args = parser.parse_args()
     if args.threads < 1:
-        parser.error("--threads must be positive")
+        parser.error("--threads должно быть не меньше 1")
     configure_logging()
     torch.set_num_threads(args.threads)
     export(args)

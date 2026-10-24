@@ -1,7 +1,7 @@
-"""Inference for the frozen models from 2_RNN_CNN_LR.ipynb.
+"""Инференс замороженных моделей из 2_RNN_CNN_LR.ipynb.
 
-Token order, truncation, surface features and network layers deliberately match
-the trained notebook. Changing them requires a new export and parity check.
+Порядок токенов, усечение, поверхностные признаки и слои сетей намеренно совпадают
+с обученным ноутбуком. Их изменение требует нового экспорта и проверки совпадения.
 """
 
 import json
@@ -46,7 +46,7 @@ def word_ngrams(text):
 
 
 def build_vocabularies(texts, encoding=DEFAULT_ENCODING):
-    """Reproduce the notebook's stable frequency ordering, using fit texts only."""
+    """Повторяет устойчивый порядок по частоте из ноутбука; только по текстам fit."""
     counter = {}
     for text in texts:
         for token in word_ngrams(text):
@@ -197,9 +197,9 @@ class EnsemblePredictor:
     def __init__(self, rnn, char, lr, vocab, char_vocab, weights, encoding=DEFAULT_ENCODING):
         values = np.asarray([weights[key] for key in COMPONENTS], dtype=float)
         if not np.isfinite(values).all() or (values < 0).any() or not np.isclose(values.sum(), 1):
-            raise ValueError("ensemble weights must be finite, nonnegative and sum to 1")
+            raise ValueError("веса ансамбля должны быть конечными, неотрицательными и в сумме давать 1")
         if list(lr.classes_) != list(CLASS_IDS):
-            raise ValueError("LR classes must be ordered [0, 1, 2]")
+            raise ValueError("классы LR должны идти в порядке [0, 1, 2]")
         self.rnn, self.char, self.lr = rnn.eval(), char.eval(), lr
         self.vocab, self.char_vocab = vocab, char_vocab
         self.weights, self.encoding = dict(weights), encoding
@@ -215,7 +215,7 @@ class EnsemblePredictor:
         }
 
     def predict_proba(self, cleaned_texts):
-        # Bounded memory for export verification and for callers using batches.
+        # Батчами: ограниченная память при проверке экспорта и для вызовов с большими списками.
         if not len(cleaned_texts):
             return np.empty((0, N_CLASSES))
         batches = []
@@ -223,7 +223,7 @@ class EnsemblePredictor:
             texts = cleaned_texts[start : start + 64]
             probabilities = blend(self.component_probabilities(texts), self.weights)
             if not np.isfinite(probabilities).all() or (probabilities < 0).any():
-                raise ValueError("invalid ensemble probability distribution")
+                raise ValueError("ансамбль вернул некорректное распределение вероятностей")
             batches.append(probabilities)
         return np.concatenate(batches)
 
@@ -232,22 +232,22 @@ def load_ensemble(manifest_path, *, num_threads=None):
     manifest_path = Path(manifest_path)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if manifest.get("format") != FORMAT or manifest.get("classes") != list(CLASS_IDS):
-        raise ValueError("unsupported ensemble format or class order")
+        raise ValueError("неподдерживаемый формат комплекта или порядок классов")
     trained_sklearn = manifest["meta"].get("sklearn_version")
     if trained_sklearn and trained_sklearn != sklearn.__version__:
-        raise ValueError(f"ensemble LR requires scikit-learn {trained_sklearn}, installed {sklearn.__version__}")
+        raise ValueError(f"LR ансамбля требует scikit-learn {trained_sklearn}, установлен {sklearn.__version__}")
     paths = {}
     for key in BUNDLE_FILES:
         entry = manifest["files"][key]
         path = (manifest_path.parent / entry["path"]).resolve()
         if not path.is_relative_to(manifest_path.parent.resolve()):
-            raise ValueError("ensemble files must be inside the bundle directory")
+            raise ValueError("файлы ансамбля должны лежать внутри каталога комплекта")
         if sha256_of(path) != entry["sha256"]:
-            raise ValueError(f"checksum mismatch: {key}")
+            raise ValueError(f"не совпадает контрольная сумма: {key}")
         paths[key] = path
     threads = DEFAULT_TORCH_THREADS if num_threads is None else num_threads
     if threads < 1:
-        raise ValueError("TORCH_NUM_THREADS must be positive")
+        raise ValueError("TORCH_NUM_THREADS должно быть не меньше 1")
     torch.set_num_threads(threads)
     vocab_data = json.loads(paths["vocab"].read_text(encoding="utf-8"))
     rnn = SpamClickbaitNet(len(vocab_data["word"]), len(vocab_data["char"]))
@@ -267,7 +267,7 @@ def load_ensemble(manifest_path, *, num_threads=None):
 
 
 def save_bundle(folder, predictor, meta):
-    """Write inference-only states: no optimizer and no dependency on notebook globals."""
+    """Сохраняет только то, что нужно для инференса: без оптимизатора и без глобальных объектов ноутбука."""
     folder = Path(folder)
     folder.mkdir(parents=True, exist_ok=True)
     torch.save(predictor.rnn.state_dict(), folder / BUNDLE_FILES["rnn"])
