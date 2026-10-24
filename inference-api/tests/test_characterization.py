@@ -29,7 +29,7 @@ def test_openapi_matches_snapshot(tmp_path):
 
 def _fields(decision) -> dict:
     data = dataclasses.asdict(decision) if dataclasses.is_dataclass(decision) else dict(decision)
-    return {key: data[key] for key in ("status", "label", "confidence", "threshold", "reason")}
+    return {key: data[key] for key in ("status", "label", "label_id", "confidence", "threshold", "reason")}
 
 
 @pytest.mark.parametrize(
@@ -59,6 +59,7 @@ def test_decide_table(scores, threshold, expected):
     assert _fields(decide(scores, 0.55, 0.65, threshold)) == {
         "status": status,
         "label": label,
+        "label_id": {None: None, "normal": 0, "spam": 1, "clickbait": 2}[label],
         "confidence": confidence,
         "threshold": used_threshold,
         "reason": reason,
