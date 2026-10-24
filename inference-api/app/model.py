@@ -48,10 +48,10 @@ class LoadedModel:
         return {LABELS[int(c)]: float(p) for c, p in zip(self.classes, proba, strict=True)}
 
 
-def _load_ensemble(path: Path) -> tuple[object, dict]:
+def _load_ensemble(path: Path, num_threads: int | None) -> tuple[object, dict]:
     from app.ensemble import load_ensemble  # torch импортируется, только если нужен ансамбль
 
-    pipeline, meta = load_ensemble(path)
+    pipeline, meta = load_ensemble(path, num_threads=num_threads)
     logger.info("ансамбль: веса %s", pipeline.weights)
     return pipeline, meta
 
@@ -68,10 +68,10 @@ def _load_sklearn(path: Path, meta_path: Path) -> tuple[object, dict]:
     return pipeline, meta
 
 
-def load_model(model_path: Path, meta_path: Path) -> LoadedModel:
+def load_model(model_path: Path, meta_path: Path, *, num_threads: int | None = None) -> LoadedModel:
     """manifest.json — ансамбль; .joblib / .pkl — отдельная LR с model_meta.json."""
     if model_path.suffix == ".json":
-        pipeline, meta = _load_ensemble(model_path)
+        pipeline, meta = _load_ensemble(model_path, num_threads)
     else:
         pipeline, meta = _load_sklearn(model_path, meta_path)
     classes = [int(c) for c in np.asarray(pipeline.classes_)]

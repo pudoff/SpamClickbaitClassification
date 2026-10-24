@@ -5,7 +5,6 @@ the trained notebook. Changing them requires a new export and parity check.
 """
 
 import json
-import os
 import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -18,6 +17,7 @@ from torch import nn
 from torch.nn import functional as F
 
 from app.artifacts import sha256_of
+from app.config import DEFAULT_TORCH_THREADS
 from app.labels import CLASS_IDS, N_CLASSES
 
 WORD_RE = re.compile(r"[a-zа-я]+(?:'[a-zа-я]+)?")
@@ -228,7 +228,7 @@ class EnsemblePredictor:
         return np.concatenate(batches)
 
 
-def load_ensemble(manifest_path):
+def load_ensemble(manifest_path, *, num_threads=None):
     manifest_path = Path(manifest_path)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if manifest.get("format") != FORMAT or manifest.get("classes") != list(CLASS_IDS):
@@ -245,7 +245,7 @@ def load_ensemble(manifest_path):
         if sha256_of(path) != entry["sha256"]:
             raise ValueError(f"checksum mismatch: {key}")
         paths[key] = path
-    threads = int(os.getenv("TORCH_NUM_THREADS", "2"))
+    threads = DEFAULT_TORCH_THREADS if num_threads is None else num_threads
     if threads < 1:
         raise ValueError("TORCH_NUM_THREADS must be positive")
     torch.set_num_threads(threads)

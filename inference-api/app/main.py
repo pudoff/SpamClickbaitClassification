@@ -59,7 +59,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.model = None
         app.state.load_error = None
         try:
-            app.state.model = load_model(settings.model_path, settings.meta_path)
+            app.state.model = load_model(
+                settings.model_path, settings.meta_path, num_threads=settings.torch_num_threads
+            )
         except Exception as exc:  # сервис поднимается, но /healthcheck честно отвечает 503
             app.state.load_error = f"{type(exc).__name__}: {exc}"
             logger.error("модель не загружена: %s", app.state.load_error)
