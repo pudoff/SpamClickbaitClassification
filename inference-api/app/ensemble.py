@@ -24,6 +24,9 @@ WORD_RE = re.compile(r"[a-zа-я]+(?:'[a-zа-я]+)?")
 CYR = set("абвгдеёжзийклмнопрстуфхцчшщъыьэюя")
 FORMAT = "spam-clickbait-ensemble-v1"
 N_SURF = 12
+# Компоненты смеси (порядок суммирования) и файлы комплекта: менять только с новым форматом.
+COMPONENTS = ("rnn", "char", "lr")
+BUNDLE_FILES = {"rnn": "rnn.pt", "char": "char.pt", "lr": "lr.joblib", "vocab": "vocab.json"}
 
 
 @dataclass(frozen=True)
@@ -186,7 +189,7 @@ class EnsemblePredictor:
     classes_ = np.array(CLASS_IDS)
 
     def __init__(self, rnn, char, lr, vocab, char_vocab, weights, encoding=DEFAULT_ENCODING):
-        values = np.asarray([weights[key] for key in ("rnn", "char", "lr")], dtype=float)
+        values = np.asarray([weights[key] for key in COMPONENTS], dtype=float)
         if not np.isfinite(values).all() or (values < 0).any() or not np.isclose(values.sum(), 1):
             raise ValueError("ensemble weights must be finite, nonnegative and sum to 1")
         if list(lr.classes_) != list(CLASS_IDS):
@@ -213,7 +216,7 @@ class EnsemblePredictor:
         for start in range(0, len(cleaned_texts), 64):
             texts = cleaned_texts[start : start + 64]
             parts = self.component_probabilities(texts)
-            blend = sum(self.weights[key] * parts[key] for key in ("rnn", "char", "lr"))
+            blend = sum(self.weights[key] * parts[key] for key in COMPONENTS)
             blend = blend / blend.sum(axis=1, keepdims=True)
             if not np.isfinite(blend).all() or (blend < 0).any():
                 raise ValueError("invalid ensemble probability distribution")
@@ -230,7 +233,7 @@ def load_ensemble(manifest_path):
     if trained_sklearn and trained_sklearn != sklearn.__version__:
         raise ValueError(f"ensemble LR requires scikit-learn {trained_sklearn}, installed {sklearn.__version__}")
     paths = {}
-    for key in ("rnn", "char", "lr", "vocab"):
+    for key in BUNDLE_FILES:
         entry = manifest["files"][key]
         path = (manifest_path.parent / entry["path"]).resolve()
         if not path.is_relative_to(manifest_path.parent.resolve()):
@@ -263,16 +266,13 @@ def save_bundle(folder, predictor, meta):
     """Write inference-only states: no optimizer and no dependency on notebook globals."""
     folder = Path(folder)
     folder.mkdir(parents=True, exist_ok=True)
-    torch.save(predictor.rnn.state_dict(), folder / "rnn.pt")
-    torch.save(predictor.char.state_dict(), folder / "char.pt")
-    joblib.dump(predictor.lr, folder / "lr.joblib", compress=3)
-    (folder / "vocab.json").write_text(
+    torch.save(predictor.rnn.state_dict(), folder / BUNDLE_FILES["rnn"])
+    torch.save(predictor.char.state_dict(), folder / BUNDLE_FILES["char"])
+    joblib.dump(predictor.lr, folder / BUNDLE_FILES["lr"], compress=3)
+    (folder / BUNDLE_FILES["vocab"]).write_text(
         json.dumps({"word": predictor.vocab, "char": predictor.char_vocab}, ensure_ascii=False), encoding="utf-8"
     )
-    files = {
-        key: {"path": name, "sha256": sha256_of(folder / name)}
-        for key, name in {"rnn": "rnn.pt", "char": "char.pt", "lr": "lr.joblib", "vocab": "vocab.json"}.items()
-    }
+    files = {key: {"path": name, "sha256": sha256_of(folder / name)} for key, name in BUNDLE_FILES.items()}
     manifest = {
         "format": FORMAT,
         "classes": list(CLASS_IDS),
