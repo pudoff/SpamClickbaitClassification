@@ -29,6 +29,7 @@ from app.ensemble import (
     build_vocabularies,
     save_bundle,
 )
+from app.labels import CLASS_IDS, N_CLASSES
 from app.text import clean_text
 from training.train import load_fixed_csv
 
@@ -132,14 +133,14 @@ def export(args):
     with threadpool_limits(limits=args.threads):
         dev_parts["lr"] = lr.predict_proba(dev_texts)
     y_dev = frame.iloc[split["dev"]].is_spam1_or_clickbait2.to_numpy()
-    if any(value.shape != (len(y_dev), 3) for value in dev_parts.values()):
+    if any(value.shape != (len(y_dev), N_CLASSES) for value in dev_parts.values()):
         raise ValueError("dev probabilities do not match the split")
     best_score, weights = -1, None
     for rnn_step in range(11):
         for char_step in range(11 - rnn_step):
             candidate = {"rnn": rnn_step / 10, "char": char_step / 10, "lr": (10 - rnn_step - char_step) / 10}
             blend = sum(candidate[key] * dev_parts[key] for key in candidate)
-            score = float(f1_score(y_dev, blend.argmax(1), average="macro", labels=[0, 1, 2]))
+            score = float(f1_score(y_dev, blend.argmax(1), average="macro", labels=list(CLASS_IDS)))
             if score > best_score:
                 best_score, weights = score, candidate
     predictor.weights = weights
@@ -153,8 +154,8 @@ def export(args):
     pred = probabilities.argmax(1)
     metrics = {
         "accuracy": float(accuracy_score(y_test, pred)),
-        "f1_macro": float(f1_score(y_test, pred, average="macro", labels=[0, 1, 2])),
-        "f1_weighted": float(f1_score(y_test, pred, average="weighted", labels=[0, 1, 2])),
+        "f1_macro": float(f1_score(y_test, pred, average="macro", labels=list(CLASS_IDS))),
+        "f1_weighted": float(f1_score(y_test, pred, average="weighted", labels=list(CLASS_IDS))),
     }
     source_names = ["rnn_best.pt", "char_best.pt", "ensemble_weights.csv", "model_comparison.csv"]
     meta = {

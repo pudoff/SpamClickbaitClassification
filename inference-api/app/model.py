@@ -9,12 +9,10 @@ from pathlib import Path
 import numpy as np
 
 from app.artifacts import load_artifact, sha256_of
+from app.labels import CLASS_IDS, LABELS  # app.model.LABELS — прежнее место, импорт сохраняется
 from app.text import clean_text
 
 logger = logging.getLogger(__name__)
-
-# Кодировка меток датасета: Datasets/df.csv, поле is_spam1_or_clickbait2
-LABELS: dict[int, str] = {0: "normal", 1: "spam", 2: "clickbait"}
 
 
 @dataclass
@@ -44,7 +42,7 @@ def load_model(model_path: Path, meta_path: Path) -> LoadedModel:
 
         pipeline, meta = load_ensemble(model_path)
         model = LoadedModel(
-            pipeline=pipeline, meta=meta, path=model_path, sha256=sha256_of(model_path), classes=[0, 1, 2]
+            pipeline=pipeline, meta=meta, path=model_path, sha256=sha256_of(model_path), classes=list(CLASS_IDS)
         )
         logger.info("ансамбль %s загружен из %s; веса %s", model.model_version, model_path, pipeline.weights)
         return model

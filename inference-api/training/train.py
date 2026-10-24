@@ -16,7 +16,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import FeatureUnion, Pipeline
 
 from app.artifacts import sha256_of
-from app.model import LABELS
+from app.labels import LABELS
 from app.text import clean_text
 
 logger = logging.getLogger("train")

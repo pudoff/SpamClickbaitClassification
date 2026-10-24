@@ -18,6 +18,7 @@ from torch import nn
 from torch.nn import functional as F
 
 from app.artifacts import sha256_of
+from app.labels import CLASS_IDS, N_CLASSES
 
 WORD_RE = re.compile(r"[a-zа-я]+(?:'[a-zа-я]+)?")
 CYR = set("абвгдеёжзийклмнопрстуфхцчшщъыьэюя")
@@ -182,13 +183,13 @@ file_hash = sha256_of
 
 
 class EnsemblePredictor:
-    classes_ = np.array([0, 1, 2])
+    classes_ = np.array(CLASS_IDS)
 
     def __init__(self, rnn, char, lr, vocab, char_vocab, weights, encoding=DEFAULT_ENCODING):
         values = np.asarray([weights[key] for key in ("rnn", "char", "lr")], dtype=float)
         if not np.isfinite(values).all() or (values < 0).any() or not np.isclose(values.sum(), 1):
             raise ValueError("ensemble weights must be finite, nonnegative and sum to 1")
-        if list(lr.classes_) != [0, 1, 2]:
+        if list(lr.classes_) != list(CLASS_IDS):
             raise ValueError("LR classes must be ordered [0, 1, 2]")
         self.rnn, self.char, self.lr = rnn.eval(), char.eval(), lr
         self.vocab, self.char_vocab = vocab, char_vocab
@@ -207,7 +208,7 @@ class EnsemblePredictor:
     def predict_proba(self, cleaned_texts):
         # Bounded memory for export verification and for callers using batches.
         if not len(cleaned_texts):
-            return np.empty((0, 3))
+            return np.empty((0, N_CLASSES))
         batches = []
         for start in range(0, len(cleaned_texts), 64):
             texts = cleaned_texts[start : start + 64]
@@ -223,7 +224,7 @@ class EnsemblePredictor:
 def load_ensemble(manifest_path):
     manifest_path = Path(manifest_path)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    if manifest.get("format") != FORMAT or manifest.get("classes") != [0, 1, 2]:
+    if manifest.get("format") != FORMAT or manifest.get("classes") != list(CLASS_IDS):
         raise ValueError("unsupported ensemble format or class order")
     trained_sklearn = manifest["meta"].get("sklearn_version")
     if trained_sklearn and trained_sklearn != sklearn.__version__:
@@ -274,7 +275,7 @@ def save_bundle(folder, predictor, meta):
     }
     manifest = {
         "format": FORMAT,
-        "classes": [0, 1, 2],
+        "classes": list(CLASS_IDS),
         "weights": predictor.weights,
         "encoding": asdict(predictor.encoding),
         "files": files,

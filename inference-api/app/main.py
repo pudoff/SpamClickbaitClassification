@@ -8,13 +8,12 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.config import Settings
-from app.model import LABELS, LoadedModel, decide, load_model
+from app.labels import LABEL_IDS, LABELS
+from app.model import LoadedModel, decide, load_model
 from app.schemas import HealthResponse, ModelInfo, PredictRequest, PredictResponse, Scores
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("inference-api")
-
-LABEL_IDS = {name: idx for idx, name in LABELS.items()}
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
