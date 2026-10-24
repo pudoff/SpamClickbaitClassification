@@ -2,7 +2,6 @@
 
 import dataclasses
 import json
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -10,10 +9,9 @@ from fastapi.testclient import TestClient
 
 from app.main import create_app
 from app.model import decide
-from tests.snapshot import dump, snapshot
+from tests.snapshot import MANIFEST_SNAPSHOT, dump, snapshot
 from training.train import evaluate
 
-MANIFEST_SNAPSHOT = Path(__file__).resolve().parents[2] / "Reports/2026-10-18/model_card/model_manifest_snapshot.json"
 MANIFEST_KEYS = ["format", "classes", "weights", "encoding", "files", "meta"]
 # Буквально, а не из app.ensemble: тест ловит и случайную правку констант.
 BUNDLE_FILES = {"rnn": "rnn.pt", "char": "char.pt", "lr": "lr.joblib", "vocab": "vocab.json"}

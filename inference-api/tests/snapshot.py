@@ -8,6 +8,8 @@ import os
 from pathlib import Path
 
 SNAPSHOTS = Path(__file__).parent / "snapshots"
+# Эталон манифеста выпущенного комплекта; в образ не попадает (лежит вне inference-api/)
+MANIFEST_SNAPSHOT = Path(__file__).resolve().parents[2] / "Reports/2026-10-18/model_card/model_manifest_snapshot.json"
 
 
 def dump(data) -> str:
