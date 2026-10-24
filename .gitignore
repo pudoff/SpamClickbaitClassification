@@ -20,7 +20,7 @@ Datasets/outputs/validation/
 Datasets/outputs/*.pkl
 Datasets/outputs/*.bak_*
 *.pkl
-
+Datasets/mlruns/
 
 # Inference API: артефакты моделей и секреты
 inference-api/models/*
