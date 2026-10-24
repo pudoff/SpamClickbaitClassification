@@ -54,9 +54,10 @@ def test_train_cli_end_to_end(tmp_path, monkeypatch, make_settings):
 
     with (out / "test_sample.pkl").open("rb") as f:
         sample = pickle.load(f)
-    assert isinstance(sample, pd.DataFrame) and list(sample.columns) == ["text_raw", "text_clean", "label"]
+    assert isinstance(sample, pd.DataFrame) and list(sample.columns) == ["text_raw", "text_clean", "label", "n_words"]
     assert len(sample) == meta["dataset"]["n_test"]
     assert sample.text_clean.tolist() == [clean_text_v2(t) for t in sample.text_raw]
+    assert sample.n_words.tolist() == [len(t.split()) for t in sample.text_clean]
     assert all(" url" in t for t in sample.text_clean)  # ссылки КАПСОМ замаскированы
 
     with TestClient(create_app(make_settings(out / "model.joblib", out / "model_meta.json"))) as client:

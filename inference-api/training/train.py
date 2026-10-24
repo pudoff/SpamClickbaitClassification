@@ -209,10 +209,11 @@ def main() -> None:
 
 
 def save_test_sample(path: Path, raw: list[str], cleaned: list[str], labels: np.ndarray) -> None:
-    """Отложенная выборка в формате ноутбука model_mlflow: text_raw, text_clean, label (pickle DataFrame)."""
+    """Отложенная выборка в формате ноутбука model_mlflow: text_raw, text_clean, label, n_words (pickle DataFrame)."""
     import pandas as pd  # только для этого файла; в рантайме сервиса pandas не нужен
 
-    sample = pd.DataFrame({"text_raw": raw, "text_clean": cleaned, "label": labels})
+    n_words = [len(text.split()) for text in cleaned]
+    sample = pd.DataFrame({"text_raw": raw, "text_clean": cleaned, "label": labels, "n_words": n_words})
     with path.open("wb") as f:
         pickle.dump(sample, f)
     logger.info("сохранено: %s (%d строк)", path, len(sample))
