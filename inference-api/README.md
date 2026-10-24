@@ -116,7 +116,7 @@ Pop-Location
 
 | Модуль | Что внутри |
 |---|---|
-| `app/main.py` | `create_app`, эндпоинты, зависимость `get_model` (503, пока модель не загружена), `build_model_info` |
+| `app/main.py` | `create_app`, эндпоинты, `get_model` (503, пока модель не загружена; вызывается после валидации тела, поэтому 422 важнее 503), `build_model_info` |
 | `app/model.py` | `load_model` (ансамбль или LR), `LoadedModel` (`name`, `version`, `model_version`, `trained_at`), политика `decide()` → `Decision` |
 | `app/ensemble.py` | RNN/char-CNN, `encode_texts`, `blend`, `EnsemblePredictor`, формат комплекта (`FORMAT`, `COMPONENTS`, `BUNDLE_FILES`, `save_bundle`, `load_ensemble`) |
 | `app/labels.py` | `LABELS`, `CLASS_IDS`, `LABEL_IDS`, `N_CLASSES` — единственное место с кодировкой классов |

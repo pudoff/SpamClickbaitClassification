@@ -84,6 +84,13 @@ def test_validation_errors(client, payload):
     assert client.post("/predict", json=payload).status_code == 422
 
 
+@pytest.mark.parametrize("payload", [{"text": "123 !!!"}, {"text": "привет", "threshold": 1.5}, {}])
+def test_validation_precedes_unavailable_model(tmp_path, make_settings, payload):
+    """Некорректное тело — 422 даже без модели: сначала валидация, потом проверка модели."""
+    with TestClient(create_app(make_settings(tmp_path / "nope.joblib"))) as c:
+        assert c.post("/predict", json=payload).status_code == 422
+
+
 def test_service_without_model_reports_503(tmp_path, make_settings):
     with TestClient(create_app(make_settings(tmp_path / "nope.joblib", tmp_path / "nope.json"))) as c:
         health = c.get("/healthcheck")

@@ -3,9 +3,8 @@
 import logging
 from contextlib import asynccontextmanager
 from dataclasses import asdict
-from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.config import Settings
@@ -19,7 +18,11 @@ logger = logging.getLogger("inference-api")
 
 
 def get_model(request: Request) -> LoadedModel:
-    """Зависимость эндпоинтов: 503, пока модель не загружена."""
+    """Загруженная модель или 503.
+
+    Вызывается в теле эндпоинта, а не через Depends: зависимости FastAPI выполняются до валидации тела,
+    и некорректный запрос без модели получил бы 503 вместо 422.
+    """
     model = request.app.state.model
     if model is None:
         raise HTTPException(
@@ -27,9 +30,6 @@ def get_model(request: Request) -> LoadedModel:
             detail=f"модель не загружена: {request.app.state.load_error}",
         )
     return model
-
-
-CurrentModel = Annotated[LoadedModel, Depends(get_model)]
 
 
 def build_model_info(model: LoadedModel, settings: Settings) -> ModelInfo:
@@ -86,8 +86,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return RedirectResponse("/docs")
 
     @app.post("/predict", response_model=PredictResponse, tags=["inference"])
-    def predict(body: PredictRequest, model: CurrentModel) -> PredictResponse:
+    def predict(body: PredictRequest, request: Request) -> PredictResponse:
         """Инференс модели: JSON на входе, предсказание на выходе."""
+        model = get_model(request)
         scores = model.predict_proba(body.text)
         decision = decide(scores, settings.tau, settings.tau_spam, body.threshold)
         return PredictResponse(**asdict(decision), scores=Scores(**scores), model_version=model.model_version)
@@ -109,9 +110,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return HealthResponse(status="ok", model_loaded=True, model_version=model.model_version)
 
     @app.get("/model-info", response_model=ModelInfo, tags=["service"])
-    def model_info(model: CurrentModel) -> ModelInfo:
+    def model_info(request: Request) -> ModelInfo:
         """Метаданные модели: версия, дата обучения, метрики."""
-        return build_model_info(model, settings)
+        return build_model_info(get_model(request), settings)
 
     return app
 
