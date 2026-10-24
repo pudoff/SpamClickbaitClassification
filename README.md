@@ -57,14 +57,17 @@ cp .env.example .env         # порт, модель, пороги; помен�
 
 Сервис по умолчанию грузит **ансамбль** из `inference-api/models/ensemble/` (`manifest.json`, `rnn.pt`, `char.pt`, `lr.joblib`, `vocab.json`). В Git его нет: возьмите каталог у команды или выполните экспорт по [инструкции сервиса](inference-api/README.md#1-подготовить-комплект-ансамбля).
 
-Если комплекта нет, можно запустить сервис на отдельной LR. Обучите её тренером, затем в `.env` укажите `MODEL_FILE=model.joblib`:
+Если комплекта нет, можно запустить сервис на отдельной LR (TF-IDF + LogisticRegression). Обучите её тренером, затем в `.env` укажите `MODEL_FILE=model.joblib`:
 
 ```bash
-docker compose --profile train run --rm trainer          # конфиг exp4 на всём df.csv → inference-api/models/model.joblib
-# быстрая проверка (~1 мин): ... trainer python -m training.train --data=/data/df.csv --out=/models --config=baseline --max-rows=20000
+# exp4 на всём df.csv, ~15 мин → inference-api/models/model.joblib + model_meta.json (+ test_sample.pkl для тестов модели)
+docker compose --profile train run --rm trainer python -m training.train --data=/data/df.csv --out=/models --config=exp4 --test-sample
+# быстрая проверка (~1 мин): ... --config=baseline --max-rows=20000
 ```
 
-LR, обученная другой версией scikit-learn (не 1.8.0, как в образе), не загрузится: сервис ответит 503, переобучите её тренером.
+Результат exp4 (24.10.2026, sklearn 1.8.0): accuracy **0.8326**, macro-F1 **0.8038** на случайном отложенном сплите (метрики завышены, см. ниже). LR, обученная другой версией scikit-learn (не 1.8.0, как в образе), работает ненадёжно: переобучите её тренером.
+
+Нормализация текста версионируется: тренер обучает на `clean-text-v2` (ссылки маскируются в любом регистре) и пишет версию в `model_meta.json` → `config.normalizer`; сервис применяет к запросам ту же версию. Выпущенный ансамбль и старые LR без этой записи работают на прежней `notebook-clean-text-v1`.
 
 ### 3. Запуск API
 
@@ -92,13 +95,17 @@ docker compose down                                    # остановить
 
 ```bash
 docker compose build inference-api                                    # после правок кода: код копируется в образ
-docker compose run --rm inference-api pytest -q -p no:cacheprovider   # тесты сервиса: 68 passed, 2 skipped
+docker compose run --rm inference-api pytest -q -p no:cacheprovider   # тесты сервиса: 82 passed, 2 skipped
 docker compose run --rm inference-api ruff check .                    # линтер
 docker compose run --rm inference-api ruff format --check .           # формат
 docker compose run --rm -v ./Datasets:/data:ro -w /data/scripts inference-api python -m pytest -q -p no:cacheprovider   # тесты Datasets/scripts
+# тесты качества «Модели 2» на артефактах тренера (нужен --test-sample при обучении, ~2 мин)
+docker compose run --rm -v ./Datasets:/data:ro -v ./inference-api/models:/artifacts:ro -e TEST_MODEL_DIR=/artifacts -w /data/outputs inference-api python -m pytest -q -p no:cacheprovider test_model.py
 ```
 
-Два пропущенных теста сверяют структуру манифеста с эталоном в `Reports/`, которого нет внутри образа. С примонтированным репозиторием они выполняются: `docker compose run --rm -v .:/repo -w /repo inference-api python -m pytest -q -p no:cacheprovider` (70 passed).
+Два пропущенных теста сервиса сверяют структуру манифеста с эталоном в `Reports/`, которого нет внутри образа. С примонтированным репозиторием они выполняются: `docker compose run --rm -v .:/repo -w /repo inference-api python -m pytest -q -p no:cacheprovider` (84 passed).
+
+`test_model.py` на exp4 от 24.10.2026: 3 passed, 3 failed. Падения — найденные слабые места модели, а не ошибки кода: добавленная ссылка меняет 16 % предсказаний (порог 10 %), очень длинный повторённый кликбейт уходит в «обычное», на коротких репликах macro-F1 0.56 (70 % от общего, требуется 85 %).
 
 Pre-commit (ruff check + format для `inference-api/` и `Datasets/scripts/`) настроен через Poetry, окружение Python 3.12 как в образе: `poetry install --with dev`, затем `poetry run pre-commit install`.
 
@@ -110,10 +117,11 @@ Pre-commit (ruff check + format для `inference-api/` и `Datasets/scripts/`) 
 |---|---|
 | Концепт и архитектура v2 после перекрёстного ревью | ✅ готово, ждёт согласования командой |
 | Текстовый датасет `df.csv` (Git LFS, ~380 МБ: 642 тыс. строк, после удаления дублей 456 тыс.) | ✅ последняя версия от 07.10.2026 |
-| «Модель 2»: TF-IDF word+char → LogisticRegression, эксперименты в MLflow | ✅ ноутбук и pytest-проверки (`Datasets/outputs/test_model.py`) |
+| «Модель 2»: TF-IDF word+char → LogisticRegression, эксперименты в MLflow | ✅ ноутбук; переобучена тренером на sklearn 1.8.0 (exp4, нормализация v2); pytest-проверки `Datasets/outputs/test_model.py` запускаются на артефактах тренера |
 | Сервис инференса `inference-api` (FastAPI, Swagger, pydantic-валидация) | ✅ RNN/CNN из второго ноутбука + сохранённая лучшая LR из первого; веса заново по dev; фактические метрики и состав через `/model-info` |
 | Воспроизводимое обучение в контейнере (`trainer`) | ✅ конфигурации из ноутбука: baseline, exp1–exp5 |
 | Рефакторинг `inference-api` без изменения поведения | ✅ общие модули (`labels`, `artifacts`, `logs`, `training/data`, `metrics`), экспорт по шагам; снимки контракта и вероятностей в тестах |
+| Исправления после рефакторинга | ✅ маскирование ссылок КАПСОМ (`clean-text-v2`), `httpx2` для TestClient, загрузка моделей через joblib, `.gitignore`/`.dockerignore` |
 | ASR (GigaAM-v3 + Silero VAD + определение языка) | ⏳ прототип `audio_module` в «до ревью», в сервис не подключён |
 | Аудио-API `/v1/classifications` по контракту `04-service-contract.openapi.yaml` | ⏳ не начато |
 | Telegram-бот (aiogram) | ⏳ не начато |

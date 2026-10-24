@@ -124,8 +124,8 @@ Pop-Location
 | `app/config.py` | `Settings` из окружения: `MODEL_PATH`, `MODEL_META_PATH`, `TAU`, `TAU_SPAM`, `TORCH_NUM_THREADS` |
 | `app/schemas.py` | pydantic-схемы контракта, тип `Probability` |
 | `app/logs.py` | `configure_logging()` — один формат логов для сервиса и скриптов |
-| `app/text.py` | `clean_text` — побайтно как в ноутбуках, не менять без переобучения |
-| `training/train.py` | отдельная LR: конфиги, `build_pipeline`, CLI |
+| `app/text.py` | нормализация по версиям: `clean_text` (`notebook-clean-text-v1`, побайтно как в ноутбуках, не менять) и `clean_text_v2` (`clean-text-v2`); `normalizer_of(meta)` выбирает версию модели |
+| `training/train.py` | отдельная LR: конфиги, `build_pipeline`, CLI (`--normalizer`, `--test-sample`) |
 | `training/export_ensemble.py` | экспорт ансамбля по шагам: `load_sources` → `restore_models` → `verify_parity` → `select_weights` → `evaluate_test` → `build_meta` |
 | `training/data.py` | `load_fixed_csv`, `deduplicate`, `import_dataset_scripts` |
 | `training/metrics.py` | `evaluate()` — метрики для `train` и экспорта |
@@ -136,3 +136,14 @@ Pop-Location
 Поддержка прежних `model.joblib`/`model.pkl` сохранена явно: задайте `MODEL_FILE=model.joblib` в `.env` или `MODEL_PATH=models/model.joblib` при локальном запуске. Это переключение на LR, а не ансамбль.
 
 `python -m training.train` по-прежнему обучает **только LR**, а его исторический случайный split отличается от нового протокола ноутбуков. Этот тренер не создаёт ансамбль и не заменяет описанный экспорт. По умолчанию Compose/API ожидают `ensemble/manifest.json`.
+
+Тренер обучает на нормализации `clean-text-v2` (флаг `--normalizer`) и записывает её в `model_meta.json` → `config.normalizer`; сервис берёт версию оттуда, неизвестная версия даёт 503. Флаг `--test-sample` дополнительно сохраняет `test_sample.pkl` (91 110 строк: `text_raw`, `text_clean`, `label`, `n_words`) для `Datasets/outputs/test_model.py`.
+
+## Нормализация текста
+
+| Версия | Функция | Где используется |
+|---|---|---|
+| `notebook-clean-text-v1` | `clean_text` | ноутбуки, выпущенный ансамбль, LR без записи `config.normalizer` |
+| `clean-text-v2` | `clean_text_v2` | тренер LR по умолчанию |
+
+v2 приводит текст к нижнему регистру до масок, поэтому ссылки КАПСОМ (`HTTP://…`, `WWW.…`) тоже становятся `url`. На всём `df.csv` обе версии дают одинаковый результат (ссылок КАПСОМ там нет), так что переобучение на v2 не меняет модель; разница проявляется только на реальных входящих сообщениях. Ансамбль перейдёт на v2 после переобучения ноутбуков: экспорт принимает `--normalizer=clean-text-v2`.
