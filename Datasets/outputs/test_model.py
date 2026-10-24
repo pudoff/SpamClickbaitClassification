@@ -2,21 +2,29 @@
 pytest-тесты для Модели 2 (Word + Char N-grams) проекта «Классификация спама и кликбейта».
 
 Запуск:      pytest test_model.py -v
-Артефакты:   model.pkl        - обученный пайплайн Модели 2;
-             test_sample.pkl  - размеченная тестовая выборка (91110 сообщений).
+Артефакты (каталог TEST_MODEL_DIR, по умолчанию рядом с этим файлом):
+             model.pkl / model.joblib - обученный пайплайн Модели 2 (ноутбук model_mlflow или тренер);
+             test_sample.pkl          - размеченная тестовая выборка (91110 сообщений).
+Получить их тренером из корня репозитория (около 15 минут), затем запустить тесты:
+    docker compose --profile train run --rm trainer python -m training.train \
+        --data=/data/df.csv --out=/models/exp4 --config=exp4 --test-sample
+    docker compose run --rm -v ./Datasets:/data:ro -v ./inference-api/models/exp4:/artifacts:ro \
+        -e TEST_MODEL_DIR=/artifacts -w /data/outputs inference-api python -m pytest -q -p no:cacheprovider test_model.py
+Без артефактов модуль пропускается (skip), а не падает.
 """
 
-import pickle
-from pathlib import Path
-
-ARTIFACT_DIR = Path(__file__).resolve().parent
+import os
 import random
 import re
+from pathlib import Path
 
+import joblib
 import numpy as np
 import pandas as pd
 import pytest
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+
+ARTIFACT_DIR = Path(os.getenv("TEST_MODEL_DIR", Path(__file__).resolve().parent))
 
 
 URL_RE = re.compile(r"https?://\S+|www\.\S+|<link>")
@@ -27,14 +35,17 @@ SPACE_RE = re.compile(r"\s+")
 
 
 def clean_text(text: str, fix_yo: bool = True) -> str:
-    """Нормализация сырого текста."""
-    text = str(text)
-    text = HTML_RE.sub(" ", text)
-    text = URL_RE.sub(" URL ", text)
-    text = MENTION_RE.sub(" ", text)
-    text = text.lower()
+    """Нормализация clean-text-v2: копия clean_text_v2 из inference-api/app/text.py.
+
+    lower() в начале, поэтому ссылки КАПСОМ тоже маскируются (тест 4a). На df.csv совпадает
+    с прежней нормализацией ноутбука на всех строках, так что подходит и к model.pkl ноутбука.
+    """
+    text = str(text).lower()
     if fix_yo:
         text = text.replace("ё", "е")
+    text = HTML_RE.sub(" ", text)
+    text = URL_RE.sub(" url ", text)
+    text = MENTION_RE.sub(" ", text)
     text = DIGIT_RE.sub(" NUM ", text)
     text = re.sub(r"[^a-zA-Zа-яА-Я\s]", " ", text)
     return SPACE_RE.sub(" ", text).strip()
@@ -50,11 +61,17 @@ HOMOGLYPHS = {
 
 # Загрузка артефактов.
 
-with open(ARTIFACT_DIR / "model.pkl", "rb") as f:
-    model = pickle.load(f)
+MODEL_PATH = next((ARTIFACT_DIR / name for name in ("model.pkl", "model.joblib") if (ARTIFACT_DIR / name).exists()), None)
+if MODEL_PATH is None or not (ARTIFACT_DIR / "test_sample.pkl").exists():
+    pytest.skip(
+        f"нет model.pkl/model.joblib и test_sample.pkl в {ARTIFACT_DIR}: получите их тренером с --test-sample "
+        "(см. docstring модуля) и укажите каталог в TEST_MODEL_DIR",
+        allow_module_level=True,
+    )
 
-with open(ARTIFACT_DIR / "test_sample.pkl", "rb") as f:
-    SAMPLE: pd.DataFrame = pickle.load(f)
+# joblib.load читает и joblib, и обычный pickle (артефакты ноутбука)
+model = joblib.load(MODEL_PATH)
+SAMPLE: pd.DataFrame = joblib.load(ARTIFACT_DIR / "test_sample.pkl")
 
 
 @pytest.fixture(scope="module")
@@ -217,10 +234,8 @@ def test_invariance_to_noise_removed_by_cleaning():
     assert text_equal == len(raw), (
         f"clean_text зависит от регистра: {len(raw) - text_equal} из {len(raw)} текстов "
         "изменились после вставки шума, хотя шум удаляется по построению. "
-        "Причина: URL_RE / MENTION_RE / HTML_RE применяются ДО text.lower(), поэтому в "
-        "сообщениях, набранных КАПСОМ (типичный стиль спама), ссылки и @/#-упоминания "
-        "не маскируются и попадают в признаки как обычные слова. "
-        "Исправление: перенести text.lower() в самое начало clean_text и переобучить модель."
+        "Проверьте, что text.lower() стоит в самом начале clean_text (нормализация clean-text-v2): "
+        "иначе ссылки КАПСОМ (типичный стиль спама) не маскируются и попадают в признаки как слова."
     )
     assert pred_equal == 1.0, (
         f"на {1 - pred_equal:.1%} сообщений шум изменил предсказание, хотя очищенный "
