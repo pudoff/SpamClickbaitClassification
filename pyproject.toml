@@ -33,6 +33,11 @@ extend-exclude = [
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.isort]
+# Пакеты inference-api; совпадает с inference-api/pyproject.toml.
+known-first-party = ["app", "training", "tests"]
+
 [dependency-groups]
 training = [
     "pandas (==2.3.3)"

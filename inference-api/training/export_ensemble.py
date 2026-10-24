@@ -17,6 +17,9 @@ import numpy as np
 import pandas as pd
 import sklearn
 import torch
+from sklearn.metrics import accuracy_score, f1_score
+from threadpoolctl import threadpool_limits
+
 from app.ensemble import (
     CharCNN,
     Encoding,
@@ -27,9 +30,6 @@ from app.ensemble import (
     save_bundle,
 )
 from app.text import clean_text
-from sklearn.metrics import accuracy_score, f1_score
-from threadpoolctl import threadpool_limits
-
 from training.train import load_fixed_csv
 
 logger = logging.getLogger("export-ensemble")

@@ -3,11 +3,11 @@
 import numpy as np
 import pytest
 import torch
+
 from app.ensemble import CharCNN, Encoding, EnsemblePredictor, SpamClickbaitNet, build_vocabularies, save_bundle
 from app.text import clean_text
-from training.train import BASE_CONFIG, build_pipeline
-
 from tests.test_api import TOY_DATA
+from training.train import BASE_CONFIG, build_pipeline
 
 
 @pytest.fixture(scope="module")

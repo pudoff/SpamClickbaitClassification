@@ -5,12 +5,12 @@ import json
 import numpy as np
 import pytest
 import torch
+from fastapi.testclient import TestClient
+
 from app.config import Settings
 from app.ensemble import load_ensemble
 from app.main import create_app
 from app.text import clean_text
-from fastapi.testclient import TestClient
-
 from tests.snapshot import snapshot
 
 
