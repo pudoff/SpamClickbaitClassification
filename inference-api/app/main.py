@@ -9,10 +9,11 @@ from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.config import Settings
 from app.labels import LABEL_IDS, LABELS
+from app.logs import configure_logging
 from app.model import LoadedModel, decide, load_model
 from app.schemas import HealthResponse, ModelInfo, PredictRequest, PredictResponse, Scores
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+configure_logging()
 logger = logging.getLogger("inference-api")
 
 

@@ -22,6 +22,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import FeatureUnion, Pipeline
 
 from app.artifacts import sha256_of
+from app.logs import configure_logging
 from app.text import clean_text
 from training.data import deduplicate, load_fixed_csv
 from training.metrics import evaluate
@@ -131,7 +132,7 @@ def main() -> None:
     parser.add_argument("--max-rows", type=int, default=None, help="подвыборка для быстрого прогона")
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    configure_logging()
 
     texts, labels, bad = load_fixed_csv(args.data)
     logger.info("прочитано %d записей из %s; пропущено строк: %s", len(texts), args.data, dict(bad) or 0)

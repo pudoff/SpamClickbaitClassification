@@ -30,6 +30,7 @@ from app.ensemble import (
     save_bundle,
 )
 from app.labels import CLASS_IDS, N_CLASSES
+from app.logs import configure_logging
 from app.text import clean_text
 from training.data import import_dataset_scripts, load_fixed_csv
 from training.metrics import evaluate
@@ -205,7 +206,7 @@ def main():
     args = parser.parse_args()
     if args.threads < 1:
         parser.error("--threads must be positive")
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    configure_logging()
     torch.set_num_threads(args.threads)
     export(args)
 
