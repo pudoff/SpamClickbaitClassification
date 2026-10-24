@@ -69,7 +69,7 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 # Остановка: Ctrl+C; затем Pop-Location
 ```
 
-`TORCH_NUM_THREADS` по умолчанию равен 2. Это CPU-инференс; CUDA и GPU не требуются. Модели загружаются один раз при старте, переводятся в eval, предсказания выполняются без градиентов.
+`TORCH_NUM_THREADS` по умолчанию равен 2; значение читается в `Settings` и проверяется при старте (меньше 1 — сервис не запустится, как и при `TAU` вне [0, 1]). Это CPU-инференс; CUDA и GPU не требуются. Модели загружаются один раз при старте, переводятся в eval, предсказания выполняются без градиентов.
 
 ## 3. Проверить результат
 
@@ -108,7 +108,28 @@ python -m pytest -q -p no:cacheprovider
 Pop-Location
 ```
 
-Либо `docker compose run --rm inference-api pytest -q`. Тесты не требуют настоящих весов: создают небольшие временные модели и проверяют обе ветки загрузки, взвешивание, сериализацию, API, Swagger/OpenAPI и отказ при повреждении компонентов. Реальная эквивалентность сохранённому ноутбуку проверяется экспортом отдельно.
+Либо `docker compose run --rm inference-api pytest -q -p no:cacheprovider`. Тесты не требуют настоящих весов: создают небольшие временные модели и проверяют обе ветки загрузки, взвешивание, сериализацию, API, Swagger/OpenAPI, шаги экспорта на синтетическом макете каталогов и отказ при повреждении компонентов. Реальная эквивалентность сохранённому ноутбуку проверяется экспортом отдельно.
+
+Характеризационные тесты (`tests/test_characterization.py`, снимки в `tests/snapshots/`) фиксируют контракт: `/openapi.json` побайтно, таблицу решений `decide()`, словарь метрик `train`, структуру манифеста и вероятности игрушечного ансамбля. Снимки перезаписываются только осознанно, при изменении контракта: `UPDATE_SNAPSHOTS=1 pytest`. Два теста сверяют структуру с эталоном `Reports/…/model_manifest_snapshot.json`; в образе его нет, поэтому там они пропускаются (`2 skipped`), а с примонтированным репозиторием выполняются.
+
+## Структура кода
+
+| Модуль | Что внутри |
+|---|---|
+| `app/main.py` | `create_app`, эндпоинты, зависимость `get_model` (503, пока модель не загружена), `build_model_info` |
+| `app/model.py` | `load_model` (ансамбль или LR), `LoadedModel` (`name`, `version`, `model_version`, `trained_at`), политика `decide()` → `Decision` |
+| `app/ensemble.py` | RNN/char-CNN, `encode_texts`, `blend`, `EnsemblePredictor`, формат комплекта (`FORMAT`, `COMPONENTS`, `BUNDLE_FILES`, `save_bundle`, `load_ensemble`) |
+| `app/labels.py` | `LABELS`, `CLASS_IDS`, `LABEL_IDS`, `N_CLASSES` — единственное место с кодировкой классов |
+| `app/artifacts.py` | `sha256_of`, `load_artifact` (`.joblib` / `.pkl`) |
+| `app/config.py` | `Settings` из окружения: `MODEL_PATH`, `MODEL_META_PATH`, `TAU`, `TAU_SPAM`, `TORCH_NUM_THREADS` |
+| `app/schemas.py` | pydantic-схемы контракта, тип `Probability` |
+| `app/logs.py` | `configure_logging()` — один формат логов для сервиса и скриптов |
+| `app/text.py` | `clean_text` — побайтно как в ноутбуках, не менять без переобучения |
+| `training/train.py` | отдельная LR: конфиги, `build_pipeline`, CLI |
+| `training/export_ensemble.py` | экспорт ансамбля по шагам: `load_sources` → `restore_models` → `verify_parity` → `select_weights` → `evaluate_test` → `build_meta` |
+| `training/data.py` | `load_fixed_csv`, `deduplicate`, `import_dataset_scripts` |
+| `training/metrics.py` | `evaluate()` — метрики для `train` и экспорта |
+| `tests/conftest.py` | `TOY_DATA`, игрушечные LR и ансамбль, фабрика `make_settings` |
 
 ## LogisticRegression для отдельных экспериментов
 

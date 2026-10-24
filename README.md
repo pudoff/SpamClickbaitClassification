@@ -15,10 +15,12 @@
 ├── .pre-commit-config.yaml        ← ruff check + ruff format для inference-api/ и Datasets/scripts/
 ├── inference-api/                 ← FastAPI-сервис классификатора (описание в inference-api/README.md)
 │   ├── app/                       ←   main.py (эндпоинты) · schemas.py (pydantic) · model.py (загрузка, политика)
-│   │                              ←   ensemble.py (RNN/CNN, смесь, формат комплекта) · text.py · config.py
+│   │                              ←   ensemble.py (RNN/CNN, смесь, формат комплекта) · labels.py (классы)
+│   │                              ←   artifacts.py (sha256, загрузка LR) · config.py · logs.py · text.py
 │   ├── training/train.py          ←   отдельная LR из df.csv → models/model.joblib + model_meta.json
 │   ├── training/export_ensemble.py ←  экспорт готового ансамбля → models/ensemble/manifest.json
-│   ├── tests/                     ←   тесты API и ансамбля через TestClient (на игрушечных моделях)
+│   ├── training/data.py, metrics.py ← чтение df.csv и метрики, общие для обоих скриптов
+│   ├── tests/                     ←   тесты на игрушечных моделях; снимки контракта в tests/snapshots/
 │   ├── notebooks/                 ←   запуск из Jupyter/Colab (uvicorn в фоне)
 │   ├── models/                    ←   артефакты модели (не в git)
 │   └── Dockerfile
