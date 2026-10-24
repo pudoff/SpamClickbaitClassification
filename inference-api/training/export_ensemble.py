@@ -8,7 +8,6 @@ import argparse
 import csv
 import json
 import logging
-import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -32,16 +31,13 @@ from app.ensemble import (
 )
 from app.labels import CLASS_IDS, N_CLASSES
 from app.text import clean_text
+from training.data import import_dataset_scripts, load_fixed_csv
 from training.metrics import evaluate
-from training.train import load_fixed_csv
 
 logger = logging.getLogger("export-ensemble")
 
 
-def restore_frame(data_path, scripts_dir):
-    sys.path.insert(0, str(scripts_dir))
-    from dataset_filtering import filter_dataset
-
+def restore_frame(data_path, filter_dataset):
     texts, labels, _ = load_fixed_csv(data_path)
     frame = pd.DataFrame({"text": texts, "is_spam1_or_clickbait2": labels})
     # Reuse the verified audit when available; split fingerprint below checks the
@@ -93,10 +89,7 @@ def select_weights(dev_parts, y_dev, step=0.1):
 
 
 def export(args):
-    scripts_dir = args.data.parent / "scripts"
-    sys.path.insert(0, str(scripts_dir))
-    from dataset_splitting import make_data_splits
-
+    filter_dataset, make_data_splits = import_dataset_scripts(args.data)
     notebook_path = args.data.parent / "2_RNN_CNN_LR.ipynb"
     lr_path = args.lr_model or args.source.parent / "1_EDA-TFIDF_LogisticRegression/model.pkl"
     summary = json.loads((args.source / "split/summary.json").read_text(encoding="utf-8"))
@@ -114,7 +107,7 @@ def export(args):
         if checkpoint.get("split_id") != summary["split_id"] or checkpoint.get("evaluation_split") != "dev":
             raise ValueError("checkpoint must be selected on dev from the same split")
     logger.info("Restoring filtered corpus and checking split identity")
-    frame = restore_frame(args.data, scripts_dir)
+    frame = restore_frame(args.data, filter_dataset)
     split = make_data_splits(frame, clean_text)
     if split["summary"]["split_id"] != summary["split_id"]:
         raise ValueError("dataset/normalization/filtering changed since the recorded notebook run")

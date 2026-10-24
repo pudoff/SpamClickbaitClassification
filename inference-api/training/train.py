@@ -1,8 +1,15 @@
+"""Обучение отдельной TF-IDF + LogisticRegression (tfidf-logreg) на Datasets/df.csv.
+
+Сохраняет <out>/model.joblib и <out>/model_meta.json. Это эксперименты и запасной вариант сервиса;
+рабочий ансамбль rnn-cnn-lr выпускается скриптом training/export_ensemble.py.
+
+    python -m training.train --data=../Datasets/df.csv --out=models --config=exp4
+"""
+
 import argparse
 import json
 import logging
 import time
-from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -15,13 +22,12 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import FeatureUnion, Pipeline
 
 from app.artifacts import sha256_of
-from app.labels import LABELS
 from app.text import clean_text
+from training.data import deduplicate, load_fixed_csv
 from training.metrics import evaluate
 
 logger = logging.getLogger("train")
 
-VALID_LABELS = set(LABELS)
 RANDOM_STATE = 42
 TEST_SIZE = 0.2
 
@@ -64,48 +70,6 @@ CONFIGS = {
     "exp4": EXP4_CONFIG,
     "exp5": EXP5_CONFIG,
 }
-
-
-def load_fixed_csv(path: Path) -> tuple[list[str], list[int], Counter]:
-    """Построчный разбор df.csv, как в ноутбуке: метка — после последней ',' или ';'.
-
-    Строки без разделителя или с нечисловой меткой пропускаются — в т.ч. маркеры
-    merge-конфликта (<<<<<<< / ======= / >>>>>>>), оставшиеся в df.csv.
-    """
-    texts, labels, bad = [], [], Counter()
-    with path.open(encoding="utf-8-sig") as f:
-        next(f)  # заголовок
-        for raw in f:
-            line = raw.rstrip("\n")
-            if not line.strip():
-                continue
-            pos = max(line.rfind(","), line.rfind(";"))
-            if pos == -1:
-                bad["нет разделителя"] += 1
-                continue
-            try:
-                label = int(line[pos + 1 :].strip().strip('"'))
-            except ValueError:
-                bad["метка не число"] += 1
-                continue
-            if label not in VALID_LABELS:
-                bad["метка вне {0,1,2}"] += 1
-                continue
-            texts.append(line[:pos].strip().strip('"'))
-            labels.append(label)
-    return texts, labels, bad
-
-
-def deduplicate(texts: list[str], labels: list[int]) -> tuple[list[str], list[int], dict]:
-    """Удаляет полные дубли и тексты с противоречивыми метками (ячейка очистки ноутбука)."""
-    pairs = list(dict.fromkeys(zip(texts, labels, strict=True)))
-    label_sets: dict[str, set[int]] = {}
-    for text, label in pairs:
-        label_sets.setdefault(text, set()).add(label)
-    conflicting = {t for t, s in label_sets.items() if len(s) > 1}
-    kept = [(t, lb) for t, lb in pairs if t not in conflicting]
-    stats = {"duplicates_removed": len(texts) - len(pairs), "conflicting_texts_removed": len(conflicting)}
-    return [t for t, _ in kept], [lb for _, lb in kept], stats
 
 
 def build_pipeline(cfg: dict, y_train: np.ndarray) -> Pipeline:
