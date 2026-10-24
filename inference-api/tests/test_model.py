@@ -10,6 +10,7 @@ from sklearn.dummy import DummyClassifier
 
 from app.main import create_app
 from app.model import load_model
+from app.text import clean_text, clean_text_v2
 
 
 def dummy(classes):
@@ -52,3 +53,20 @@ def test_unloaded_model_bodies(tmp_path, make_settings):
         for response in (client.post("/predict", json={"text": "привет"}), client.get("/model-info")):
             assert response.status_code == 503
             assert response.json()["detail"].startswith("модель не загружена: ValueError")
+
+
+def test_normalizer_comes_from_meta(tmp_path):
+    path = tmp_path / "model.joblib"
+    joblib.dump(dummy([0, 1, 2]), path)
+    legacy = load_model(path, tmp_path / "missing.json")
+    assert legacy.normalizer == "notebook-clean-text-v1" and legacy.normalize is clean_text
+    (tmp_path / "meta.json").write_text('{"config": {"normalizer": "clean-text-v2"}}', encoding="utf-8")
+    assert load_model(path, tmp_path / "meta.json").normalize is clean_text_v2
+
+
+def test_unknown_normalizer_is_unavailable(tmp_path, make_settings):
+    joblib.dump(dummy([0, 1, 2]), tmp_path / "model.joblib")
+    (tmp_path / "meta.json").write_text('{"config": {"normalizer": "v3"}}', encoding="utf-8")
+    with TestClient(create_app(make_settings(tmp_path / "model.joblib", tmp_path / "meta.json"))) as client:
+        health = client.get("/healthcheck")
+        assert health.status_code == 503 and "нормализация" in health.json()["detail"]

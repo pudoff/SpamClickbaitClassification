@@ -10,7 +10,7 @@ import numpy as np
 
 from app.artifacts import load_artifact, sha256_of
 from app.labels import LABEL_IDS, LABELS  # app.model.LABELS — прежнее место, импорт сохраняется
-from app.text import clean_text
+from app.text import NORMALIZER_V1, get_normalizer, normalizer_of
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +25,11 @@ class LoadedModel:
     path: Path
     sha256: str
     classes: list[int] = field(default_factory=list)
+    normalizer: str = NORMALIZER_V1  # load_model берёт из метаданных (config.normalizer)
+
+    @property
+    def normalize(self):
+        return get_normalizer(self.normalizer)
 
     @property
     def name(self) -> str:
@@ -44,7 +49,7 @@ class LoadedModel:
         return datetime.fromisoformat(value) if value else None
 
     def predict_proba(self, text: str) -> dict[str, float]:
-        proba = self.pipeline.predict_proba([clean_text(text)])[0]
+        proba = self.pipeline.predict_proba([self.normalize(text)])[0]
         return {LABELS[int(c)]: float(p) for c, p in zip(self.classes, proba, strict=True)}
 
 
@@ -77,8 +82,17 @@ def load_model(model_path: Path, meta_path: Path, *, num_threads: int | None = N
     classes = [int(c) for c in np.asarray(pipeline.classes_)]
     if sorted(classes) != sorted(LABELS):
         raise ValueError(f"модель знает классы {classes}, ожидались {sorted(LABELS)}")
-    model = LoadedModel(pipeline=pipeline, meta=meta, path=model_path, sha256=sha256_of(model_path), classes=classes)
-    logger.info("модель %s загружена из %s", model.model_version, model_path)
+    normalizer = normalizer_of(meta)
+    get_normalizer(normalizer)  # неизвестная нормализация — отказ при загрузке (503), а не тихий skew
+    model = LoadedModel(
+        pipeline=pipeline,
+        meta=meta,
+        path=model_path,
+        sha256=sha256_of(model_path),
+        classes=classes,
+        normalizer=normalizer,
+    )
+    logger.info("модель %s загружена из %s; нормализация %s", model.model_version, model_path, normalizer)
     return model
 
 

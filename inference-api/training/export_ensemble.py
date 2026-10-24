@@ -32,7 +32,7 @@ from app.ensemble import (
 )
 from app.labels import CLASS_IDS, N_CLASSES
 from app.logs import configure_logging
-from app.text import clean_text
+from app.text import NORMALIZER_V1, NORMALIZERS, get_normalizer
 from training.data import import_dataset_scripts, load_fixed_csv
 from training.metrics import evaluate
 
@@ -198,7 +198,7 @@ def build_meta(args, sources, lr, weights, dev_score, metrics, parity_errors):
             "dev_f1_macro": dev_score,
             "original_notebook_dev_f1_macro": float(sources.weights_row["macro-F1 (валидация)"]),
             "lr_C": float(lr.named_steps["clf"].C),
-            "normalizer": "notebook-clean-text-v1",
+            "normalizer": args.normalizer,
             "variant": "notebook-neural-models-plus-saved-best-lr",
             "lr_source_sha256": sha256_of(sources.lr_path),
             "parity": {"sample_rows_per_split": PARITY_SAMPLE, "max_absolute_errors": parity_errors},
@@ -213,10 +213,11 @@ def export(args):
     sources, checkpoints = load_sources(args)
     logger.info("восстанавливаем отфильтрованный корпус и проверяем идентичность сплита")
     frame = restore_frame(args.data, filter_dataset)
-    split = make_data_splits(frame, clean_text)
+    normalize = get_normalizer(args.normalizer)
+    split = make_data_splits(frame, normalize)
     if split["summary"]["split_id"] != sources.summary["split_id"]:
         raise ValueError("датасет, нормализация или фильтрация изменились после записанного запуска ноутбука")
-    texts = frame.text.map(clean_text)
+    texts = frame.text.map(normalize)
     labels = frame.is_spam1_or_clickbait2
     predictor = restore_models(texts.iloc[split["fit"]].tolist(), checkpoints, sources.lr_path)
     del checkpoints  # веса уже в сетях; освобождаем память до инференса
@@ -249,6 +250,12 @@ def main():
     )
     parser.add_argument("--version", default="ensemble-20261018")
     parser.add_argument("--threads", type=int, default=2)
+    parser.add_argument(
+        "--normalizer",
+        choices=sorted(NORMALIZERS),
+        default=NORMALIZER_V1,
+        help="нормализация, на которой обучены модели ноутбуков (app/text.py)",
+    )
     args = parser.parse_args()
     if args.threads < 1:
         parser.error("--threads должно быть не меньше 1")

@@ -126,7 +126,9 @@ def layout(tmp_path, toy_texts, toy_lr):
         checkpoint = {"split_id": "abc", "evaluation_split": "dev", "model_state": net.state_dict()}
         checkpoint |= {"vocab_size": len(vocab), "char_vocab_size": len(char_vocab)}
         torch.save(checkpoint, source / f"{key}_best.pt")
-    args = argparse.Namespace(data=data, source=source, lr_model=None, version="ensemble-test", threads=1)
+    args = argparse.Namespace(
+        data=data, source=source, lr_model=None, version="ensemble-test", threads=1, normalizer="notebook-clean-text-v1"
+    )
     return args, nets
 
 

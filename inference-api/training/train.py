@@ -1,7 +1,9 @@
 """Обучение отдельной TF-IDF + LogisticRegression (tfidf-logreg) на Datasets/df.csv.
 
-Сохраняет <out>/model.joblib и <out>/model_meta.json. Это эксперименты и запасной вариант сервиса;
-рабочий ансамбль rnn-cnn-lr выпускается скриптом training/export_ensemble.py.
+Сохраняет <out>/model.joblib и <out>/model_meta.json (нормализация — в config.normalizer, по умолчанию
+clean-text-v2). С --test-sample ещё <out>/test_sample.pkl для Datasets/outputs/test_model.py.
+Это эксперименты и запасной вариант сервиса; рабочий ансамбль rnn-cnn-lr выпускается
+скриптом training/export_ensemble.py.
 
     python -m training.train --data=../Datasets/df.csv --out=models --config=exp4
 """
@@ -9,6 +11,7 @@
 import argparse
 import json
 import logging
+import pickle
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -23,7 +26,7 @@ from sklearn.pipeline import FeatureUnion, Pipeline
 
 from app.artifacts import sha256_of
 from app.logs import configure_logging
-from app.text import clean_text
+from app.text import NORMALIZER_V2, NORMALIZERS, get_normalizer
 from training.data import deduplicate, load_fixed_csv
 from training.metrics import evaluate
 
@@ -130,6 +133,12 @@ def main() -> None:
     parser.add_argument("--config", choices=sorted(CONFIGS), default="exp4")
     parser.add_argument("--version", default="1", help="версия модели: tfidf-logreg@<version>")
     parser.add_argument("--max-rows", type=int, default=None, help="подвыборка для быстрого прогона")
+    parser.add_argument(
+        "--normalizer", choices=sorted(NORMALIZERS), default=NORMALIZER_V2, help="нормализация текста (app/text.py)"
+    )
+    parser.add_argument(
+        "--test-sample", action="store_true", help="сохранить test_sample.pkl для Datasets/outputs/test_model.py"
+    )
     args = parser.parse_args()
 
     configure_logging()
@@ -150,8 +159,10 @@ def main() -> None:
     X_train, X_test, y_train, y_test = train_test_split(
         texts, y, test_size=TEST_SIZE, random_state=RANDOM_STATE, stratify=y
     )
-    X_train = [clean_text(t) for t in X_train]
-    X_test = [clean_text(t) for t in X_test]
+    normalize = get_normalizer(args.normalizer)
+    X_test_raw = X_test
+    X_train = [normalize(t) for t in X_train]
+    X_test = [normalize(t) for t in X_test]
 
     cfg = CONFIGS[args.config]
     model = build_pipeline(cfg, y_train)
@@ -172,7 +183,10 @@ def main() -> None:
         "trained_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "sklearn_version": sklearn.__version__,
         "config_name": args.config,
-        "config": {k: list(v) if isinstance(v, tuple) else v for k, v in cfg.items()},
+        "config": {
+            **{k: list(v) if isinstance(v, tuple) else v for k, v in cfg.items()},
+            "normalizer": args.normalizer,
+        },
         "metrics": metrics,
         "metrics_note": "Случайный стратифицированный сплит 80/20; оценка завышена (01-review R-36).",
         "fit_time_sec": round(fit_time, 1),
@@ -190,6 +204,18 @@ def main() -> None:
     }
     (args.out / "model_meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
     logger.info("сохранено: %s, %s", model_path, args.out / "model_meta.json")
+    if args.test_sample:
+        save_test_sample(args.out / "test_sample.pkl", X_test_raw, X_test, y_test)
+
+
+def save_test_sample(path: Path, raw: list[str], cleaned: list[str], labels: np.ndarray) -> None:
+    """Отложенная выборка в формате ноутбука model_mlflow: text_raw, text_clean, label (pickle DataFrame)."""
+    import pandas as pd  # только для этого файла; в рантайме сервиса pandas не нужен
+
+    sample = pd.DataFrame({"text_raw": raw, "text_clean": cleaned, "label": labels})
+    with path.open("wb") as f:
+        pickle.dump(sample, f)
+    logger.info("сохранено: %s (%d строк)", path, len(sample))
 
 
 if __name__ == "__main__":
