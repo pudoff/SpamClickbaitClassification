@@ -8,23 +8,31 @@
 
 ```
 ├── README.md                      ← этот файл: запуск, структура, статус
+├── MODEL_CARD.md                  ← карточка модели rnn-cnn-lr: метрики, ограничения, риски
 ├── compose.yaml                   ← Docker Compose: inference-api + trainer (профиль train)
-├── .env.example                   ← шаблон настроек (порт, пороги, конфиг обучения) → скопировать в .env
+├── .env.example                   ← шаблон настроек (порт, модель, пороги, конфиг LR) → скопировать в .env
+├── pyproject.toml, poetry.lock    ← Poetry (venv в .venv), настройки ruff и pytest
+├── .pre-commit-config.yaml        ← ruff check + ruff format для inference-api/ и Datasets/scripts/
 ├── inference-api/                 ← FastAPI-сервис классификатора (описание в inference-api/README.md)
-│   ├── app/                       ←   main.py (эндпоинты) · schemas.py (pydantic) · model.py · text.py · config.py
-│   ├── training/train.py          ←   обучение модели из df.csv → models/model.joblib + model_meta.json
+│   ├── app/                       ←   main.py (эндпоинты) · schemas.py (pydantic) · model.py (загрузка, политика)
+│   │                              ←   ensemble.py (RNN/CNN, смесь, формат комплекта) · text.py · config.py
+│   ├── training/train.py          ←   отдельная LR из df.csv → models/model.joblib + model_meta.json
 │   ├── training/export_ensemble.py ←  экспорт готового ансамбля → models/ensemble/manifest.json
-│   ├── tests/                     ←   тесты API через TestClient
-│   ├── notebooks/                 ←   запуск из Jupyter/Colab (uvicorn + nest_asyncio)
+│   ├── tests/                     ←   тесты API и ансамбля через TestClient (на игрушечных моделях)
+│   ├── notebooks/                 ←   запуск из Jupyter/Colab (uvicorn в фоне)
 │   ├── models/                    ←   артефакты модели (не в git)
 │   └── Dockerfile
 ├── Datasets/
 │   ├── df.csv                     ← текстовый датасет (Git LFS): text, is_spam1_or_clickbait2 (0 обычное, 1 спам, 2 кликбейт)
-│   ├── dataset_description.md/html ← описание данных и результаты моделей
-│   ├── task1_report.md/html       ← короткий отчёт для преподавателя
-│   ├── notebooks/                ← model.ipynb, model_mlflow.ipynb, model_rnn.ipynb
-│   ├── scripts/                  ← EDA, загрузчик, перевод, рендер отчёта, requirements.txt
-│   └── outputs/                  ← графики, модели, CSV/NPY, HTML-профили, mlflow.db, test_model.py, eda/
+│   ├── 1_EDA-TFIDF_LogisticRegression.ipynb ← EDA и лучшая TF-IDF/LR (входит в ансамбль)
+│   ├── 2_RNN_CNN_LR.ipynb         ← RNN, char-CNN и ансамбль
+│   ├── dataset_description.md     ← описание данных и результаты моделей
+│   ├── Homework1_report.md        ← отчёт по первому заданию
+│   ├── notebooks/                 ← ранние ноутбуки: model.ipynb, model_mlflow.ipynb, model_rnn.ipynb, model_rnn_2.ipynb
+│   ├── scripts/                   ← загрузчик, фильтрация, grouped-сплит, EDA, перевод, тесты, requirements.txt
+│   └── outputs/                   ← графики, CSV/NPY, HTML-профили, mlflow.db, test_model.py, eda/
+├── Reports/                       ← снимок манифеста ансамбля для Model Card, BPMN-диаграмма
+├── Переобучение.bpmn              ← BPMN процесса переобучения
 ├── ConceptAndArchitecture/
 │   ├── до ревью/                  ← версия 1 (история): docx, pptx, прототип audio_module
 │   └── после ревью/               ← версия 2 — актуальный концепт, архитектура, OpenAPI-контракт
@@ -33,7 +41,7 @@
 
 ## Как запустить
 
-Нужны Docker Desktop и комплект ансамбля в `inference-api/models/ensemble/`. Все команды выполняются из корня репозитория. В этой рабочей копии комплект подготовлен; он исключён из Git. На другом компьютере передайте его отдельно или выполните экспорт по [инструкции сервиса](inference-api/README.md).
+Нужны Docker Desktop и комплект ансамбля в `inference-api/models/ensemble/`. Все команды выполняются из корня репозитория. Комплект в Git не хранится: получите каталог у команды или выполните экспорт по [инструкции сервиса](inference-api/README.md). Без комплекта сервис запустится, но `/healthcheck` ответит 503.
 
 ```bash
 # В .env: MODEL_FILE=ensemble/manifest.json
@@ -75,7 +83,7 @@ cd inference-api && ../.venv/Scripts/python -m pytest -q
 
 ## Что сделано на данный момент
 
-Учебные документы: [Model Card](MODEL_CARD.md) · [BPMN retraining-цикла — просмотр](Reports/2026-10-18/bpmn/retraining_cycle.html) · [BPMN — исходник](Reports/2026-10-18/bpmn/retraining_cycle.bpmn) · [Poetry, линтеры и pre-commit — самостоятельная инструкция](Reports/2026-10-18/homework_production_manual.md).
+Учебные документы: [Model Card](MODEL_CARD.md) · [BPMN переобучения](Переобучение.bpmn) · [BPMN-диаграмма](Reports/diagram.bpmn) · [снимок манифеста ансамбля](Reports/2026-10-18/model_card/model_manifest_snapshot.json).
 
 | Часть | Статус |
 |---|---|
