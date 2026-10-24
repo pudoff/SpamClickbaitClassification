@@ -2,11 +2,13 @@
 
 import re
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 Label = Literal["spam", "clickbait", "normal"]
+# Вероятность или порог уверенности
+Probability = Annotated[float, Field(ge=0.0, le=1.0)]
 
 _LETTER_RE = re.compile(r"[a-zA-Zа-яА-ЯёЁ]")
 
@@ -30,10 +32,8 @@ class PredictRequest(BaseModel):
         max_length=20_000,
         description="Сырой текст сообщения (до 20 000 символов, как transcript в контракте).",
     )
-    threshold: float | None = Field(
+    threshold: Probability | None = Field(
         default=None,
-        ge=0.0,
-        le=1.0,
         description="Порог уверенности для этого запроса. Если не задан — политика сервиса (TAU / TAU_SPAM).",
     )
 
@@ -49,9 +49,9 @@ class PredictRequest(BaseModel):
 class Scores(BaseModel):
     """Вероятности классов; сумма равна 1 с точностью до округления."""
 
-    spam: float = Field(ge=0.0, le=1.0)
-    clickbait: float = Field(ge=0.0, le=1.0)
-    normal: float = Field(ge=0.0, le=1.0)
+    spam: Probability
+    clickbait: Probability
+    normal: Probability
 
 
 class PredictResponse(BaseModel):
@@ -61,8 +61,8 @@ class PredictResponse(BaseModel):
     label: Label | None = Field(description="Метка; заполнена только при status = classified.")
     label_id: Literal[0, 1, 2] | None = Field(description="Метка в кодировке датасета: 0 normal, 1 spam, 2 clickbait.")
     reason: Literal["low_confidence"] | None
-    confidence: float = Field(ge=0.0, le=1.0, description="Вероятность наиболее вероятного класса.")
-    threshold: float = Field(ge=0.0, le=1.0, description="Порог, с которым сравнивалась уверенность.")
+    confidence: Probability = Field(description="Вероятность наиболее вероятного класса.")
+    threshold: Probability = Field(description="Порог, с которым сравнивалась уверенность.")
     scores: Scores
     model_version: str
 
@@ -77,13 +77,13 @@ class HealthResponse(BaseModel):
 class Metrics(BaseModel):
     model_config = ConfigDict(extra="allow")
 
-    f1_macro: float | None = Field(default=None, ge=0.0, le=1.0)
-    accuracy: float | None = Field(default=None, ge=0.0, le=1.0)
+    f1_macro: Probability | None = None
+    accuracy: Probability | None = None
 
 
 class Policy(BaseModel):
-    tau: float = Field(ge=0.0, le=1.0)
-    tau_spam: float = Field(ge=0.0, le=1.0)
+    tau: Probability
+    tau_spam: Probability
 
 
 class ModelInfo(BaseModel):

@@ -22,9 +22,15 @@ Datasets/outputs/*.bak_*
 *.pkl
 
 
+# Артефакты моделей в любом месте (веса, пайплайны sklearn); уже отслеживаемые файлы это не затрагивает
+*.pt
+*.joblib
+
 # Inference API: артефакты моделей и секреты
 inference-api/models/*
 !inference-api/models/.gitkeep
 .env
+.env.*
+!.env.example
 .pytest_cache/
 .ruff_cache/

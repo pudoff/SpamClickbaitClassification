@@ -2,19 +2,53 @@
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime
+from dataclasses import asdict
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.config import Settings
-from app.model import LABELS, LoadedModel, decide, load_model
+from app.labels import LABELS
+from app.logs import configure_logging
+from app.model import LoadedModel, decide, load_model
 from app.schemas import HealthResponse, ModelInfo, PredictRequest, PredictResponse, Scores
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+configure_logging()
 logger = logging.getLogger("inference-api")
 
-LABEL_IDS = {name: idx for idx, name in LABELS.items()}
+
+def get_model(request: Request) -> LoadedModel:
+    """Загруженная модель или 503.
+
+    Вызывается в теле эндпоинта, а не через Depends: зависимости FastAPI выполняются до валидации тела,
+    и некорректный запрос без модели получил бы 503 вместо 422.
+    """
+    model = request.app.state.model
+    if model is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"модель не загружена: {request.app.state.load_error}",
+        )
+    return model
+
+
+def build_model_info(model: LoadedModel, settings: Settings) -> ModelInfo:
+    meta = model.meta
+    return ModelInfo(
+        name=model.name,
+        version=model.version,
+        model_version=model.model_version,
+        trained_at=model.trained_at,
+        framework=meta.get("framework", "scikit-learn"),
+        sklearn_version=meta.get("sklearn_version"),
+        artifact=model.path.name,
+        artifact_sha256=model.sha256,
+        classes={str(i): name for i, name in LABELS.items()},
+        metrics=meta.get("metrics"),
+        dataset=meta.get("dataset"),
+        config=meta.get("config"),
+        policy={"tau": settings.tau, "tau_spam": settings.tau_spam},
+    )
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -25,7 +59,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.model = None
         app.state.load_error = None
         try:
-            app.state.model = load_model(settings.model_path, settings.meta_path)
+            app.state.model = load_model(
+                settings.model_path, settings.meta_path, num_threads=settings.torch_num_threads
+            )
         except Exception as exc:  # сервис поднимается, но /healthcheck честно отвечает 503
             app.state.load_error = f"{type(exc).__name__}: {exc}"
             logger.error("модель не загружена: %s", app.state.load_error)
@@ -45,15 +81,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = settings
 
-    def get_model(request: Request) -> LoadedModel:
-        model = request.app.state.model
-        if model is None:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"модель не загружена: {request.app.state.load_error}",
-            )
-        return model
-
     @app.get("/", include_in_schema=False)
     def root() -> RedirectResponse:
         return RedirectResponse("/docs")
@@ -64,12 +91,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         model = get_model(request)
         scores = model.predict_proba(body.text)
         decision = decide(scores, settings.tau, settings.tau_spam, body.threshold)
-        return PredictResponse(
-            **decision,
-            label_id=LABEL_IDS[decision["label"]] if decision["label"] else None,
-            scores=Scores(**scores),
-            model_version=model.model_version,
-        )
+        return PredictResponse(**asdict(decision), scores=Scores(**scores), model_version=model.model_version)
 
     @app.get(
         "/healthcheck",
@@ -79,33 +101,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     def healthcheck(request: Request):
         """Сервис жив и модель загружена."""
-        model = request.app.state.model
-        if model is None:
+        try:
+            model = get_model(request)
+        except HTTPException as exc:
+            # По контракту 503 приходит с телом HealthResponse, а не с {"detail": ...}
             body = HealthResponse(status="unavailable", model_loaded=False, detail=request.app.state.load_error)
-            return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content=body.model_dump())
+            return JSONResponse(status_code=exc.status_code, content=body.model_dump())
         return HealthResponse(status="ok", model_loaded=True, model_version=model.model_version)
 
     @app.get("/model-info", response_model=ModelInfo, tags=["service"])
     def model_info(request: Request) -> ModelInfo:
         """Метаданные модели: версия, дата обучения, метрики."""
-        model = get_model(request)
-        meta = model.meta
-        trained_at = meta.get("trained_at")
-        return ModelInfo(
-            name=meta.get("name", "tfidf-logreg"),
-            version=model.version,
-            model_version=model.model_version,
-            trained_at=datetime.fromisoformat(trained_at) if trained_at else None,
-            framework=meta.get("framework", "scikit-learn"),
-            sklearn_version=meta.get("sklearn_version"),
-            artifact=model.path.name,
-            artifact_sha256=model.sha256,
-            classes={str(i): name for i, name in LABELS.items()},
-            metrics=meta.get("metrics"),
-            dataset=meta.get("dataset"),
-            config=meta.get("config"),
-            policy={"tau": settings.tau, "tau_spam": settings.tau_spam},
-        )
+        return build_model_info(get_model(request), settings)
 
     return app
 
