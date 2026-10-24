@@ -7,8 +7,8 @@ pytest-тесты для Модели 2 (Word + Char N-grams) проекта «�
              test_sample.pkl          - размеченная тестовая выборка (91110 сообщений).
 Получить их тренером из корня репозитория (около 15 минут), затем запустить тесты:
     docker compose --profile train run --rm trainer python -m training.train \
-        --data=/data/df.csv --out=/models/exp4 --config=exp4 --test-sample
-    docker compose run --rm -v ./Datasets:/data:ro -v ./inference-api/models/exp4:/artifacts:ro \
+        --data=/data/df.csv --out=/models --config=exp4 --test-sample
+    docker compose run --rm -v ./Datasets:/data:ro -v ./inference-api/models:/artifacts:ro \
         -e TEST_MODEL_DIR=/artifacts -w /data/outputs inference-api python -m pytest -q -p no:cacheprovider test_model.py
 Без артефактов модуль пропускается (skip), а не падает.
 """
