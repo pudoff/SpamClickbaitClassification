@@ -43,14 +43,37 @@
 
 ## Как запустить
 
-Нужны Docker Desktop и комплект ансамбля в `inference-api/models/ensemble/`. Все команды выполняются из корня репозитория. Комплект в Git не хранится: получите каталог у команды или выполните экспорт по [инструкции сервиса](inference-api/README.md). Без комплекта сервис запустится, но `/healthcheck` ответит 503.
+Всё запускается в Docker из корня репозитория. Нужны **Docker Desktop** (должен быть запущен) и **Git LFS**. В системный Python ничего ставить не нужно.
+
+### 1. Подготовка
 
 ```bash
-# В .env: MODEL_FILE=ensemble/manifest.json
-docker compose up -d --build inference-api
+git clone https://github.com/pudoff/SpamClickbaitClassification.git && cd SpamClickbaitClassification
+git lfs pull                 # Datasets/df.csv (~380 МБ): нужен тренеру и экспорту, для самого API не обязателен
+cp .env.example .env         # порт, модель, пороги; поменяйте при необходимости
 ```
 
-Откройте **http://localhost:8000/docs** — Swagger UI, где можно вызвать все эндпоинты.
+### 2. Модель
+
+Сервис по умолчанию грузит **ансамбль** из `inference-api/models/ensemble/` (`manifest.json`, `rnn.pt`, `char.pt`, `lr.joblib`, `vocab.json`). В Git его нет: возьмите каталог у команды или выполните экспорт по [инструкции сервиса](inference-api/README.md#1-подготовить-комплект-ансамбля).
+
+Если комплекта нет, можно запустить сервис на отдельной LR. Обучите её тренером, затем в `.env` укажите `MODEL_FILE=model.joblib`:
+
+```bash
+docker compose --profile train run --rm trainer          # конфиг exp4 на всём df.csv → inference-api/models/model.joblib
+# быстрая проверка (~1 мин): ... trainer python -m training.train --data=/data/df.csv --out=/models --config=baseline --max-rows=20000
+```
+
+LR, обученная другой версией scikit-learn (не 1.8.0, как в образе), не загрузится: сервис ответит 503, переобучите её тренером.
+
+### 3. Запуск API
+
+```bash
+docker compose up -d --build inference-api
+docker compose ps            # через 10–20 с (загрузка torch): Up … (healthy)
+```
+
+Откройте **http://localhost:8000/docs** — Swagger UI, где можно вызвать все эндпоинты (порт задаётся `API_PORT` в `.env`).
 
 | Эндпоинт | Что делает |
 |---|---|
@@ -58,30 +81,26 @@ docker compose up -d --build inference-api
 | `GET /healthcheck` | Сервис жив и модель загружена (иначе ответ 503 с причиной) |
 | `GET /model-info` | Версия модели, дата обучения, метрики, конфигурация, пороги |
 
-Другие команды:
+Если модели нет или комплект неполный, сервис всё равно стартует, но `/healthcheck` и `/predict` отвечают **503**, а причина видна в `detail` и в `docker compose logs inference-api`. Молча перейти на другую модель сервис не может.
 
 ```bash
-docker compose ps                                      # статус (healthy = модель загружена)
 docker compose logs -f inference-api                   # логи
-docker compose run --rm inference-api pytest -q        # тесты
-docker compose run --rm inference-api ruff check .     # линтер
 docker compose down                                    # остановить
 ```
 
-Отдельный LR-тренер для экспериментов (не создаёт ансамбль и не переключает API):
+### 4. Проверки (тесты и линтеры)
 
 ```bash
-docker compose --profile train run --rm trainer python -m training.train \
-    --data=/data/df.csv --out=/models --config=baseline --max-rows=20000
+docker compose build inference-api                                    # после правок кода: код копируется в образ
+docker compose run --rm inference-api pytest -q -p no:cacheprovider   # тесты сервиса: 68 passed, 2 skipped
+docker compose run --rm inference-api ruff check .                    # линтер
+docker compose run --rm inference-api ruff format --check .           # формат
+docker compose run --rm -v ./Datasets:/data:ro -w /data/scripts inference-api python -m pytest -q -p no:cacheprovider   # тесты Datasets/scripts
 ```
 
-**Локально без Docker** пакеты ставятся только в `.venv` проекта, в системный Python ничего не ставим:
+Два пропущенных теста сверяют структуру манифеста с эталоном в `Reports/`, которого нет внутри образа. С примонтированным репозиторием они выполняются: `docker compose run --rm -v .:/repo -w /repo inference-api python -m pytest -q -p no:cacheprovider` (70 passed).
 
-```bash
-python -m venv .venv
-.venv/Scripts/pip install -r inference-api/requirements-dev.txt     # Windows (Linux/macOS: .venv/bin/pip)
-cd inference-api && ../.venv/Scripts/python -m pytest -q
-```
+Pre-commit (ruff check + format для `inference-api/` и `Datasets/scripts/`) настроен через Poetry, окружение Python 3.12 как в образе: `poetry install --with dev`, затем `poetry run pre-commit install`.
 
 ## Что сделано на данный момент
 
@@ -94,6 +113,7 @@ cd inference-api && ../.venv/Scripts/python -m pytest -q
 | «Модель 2»: TF-IDF word+char → LogisticRegression, эксперименты в MLflow | ✅ ноутбук и pytest-проверки (`Datasets/outputs/test_model.py`) |
 | Сервис инференса `inference-api` (FastAPI, Swagger, pydantic-валидация) | ✅ RNN/CNN из второго ноутбука + сохранённая лучшая LR из первого; веса заново по dev; фактические метрики и состав через `/model-info` |
 | Воспроизводимое обучение в контейнере (`trainer`) | ✅ конфигурации из ноутбука: baseline, exp1–exp5 |
+| Рефакторинг `inference-api` без изменения поведения | ✅ общие модули (`labels`, `artifacts`, `logs`, `training/data`, `metrics`), экспорт по шагам; снимки контракта и вероятностей в тестах |
 | ASR (GigaAM-v3 + Silero VAD + определение языка) | ⏳ прототип `audio_module` в «до ревью», в сервис не подключён |
 | Аудио-API `/v1/classifications` по контракту `04-service-contract.openapi.yaml` | ⏳ не начато |
 | Telegram-бот (aiogram) | ⏳ не начато |
