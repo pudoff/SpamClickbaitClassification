@@ -26,6 +26,7 @@ from app.ensemble import (
     Encoding,
     EnsemblePredictor,
     SpamClickbaitNet,
+    blend,
     build_vocabularies,
     save_bundle,
 )
@@ -74,6 +75,20 @@ def check_close(actual, expected, name):
     if not np.allclose(actual, expected, atol=5e-6, rtol=1e-5):
         raise ValueError(f"{name}: predictions differ from notebook (max error {error}); export aborted")
     return error
+
+
+def select_weights(dev_parts, y_dev, step=0.1):
+    """Перебор сетки весов на dev: первый максимум macro-F1 (строгое >), по rnn, затем по char."""
+    n = round(1 / step)
+    best_score, weights = -1, None
+    for rnn_step in range(n + 1):
+        for char_step in range(n + 1 - rnn_step):
+            candidate = {"rnn": rnn_step / n, "char": char_step / n, "lr": (n - rnn_step - char_step) / n}
+            pred = blend(dev_parts, candidate, normalize=False).argmax(1)
+            score = float(f1_score(y_dev, pred, average="macro", labels=list(CLASS_IDS)))
+            if score > best_score:
+                best_score, weights = score, candidate
+    return weights, best_score
 
 
 def export(args):
@@ -135,21 +150,13 @@ def export(args):
     y_dev = frame.iloc[split["dev"]].is_spam1_or_clickbait2.to_numpy()
     if any(value.shape != (len(y_dev), N_CLASSES) for value in dev_parts.values()):
         raise ValueError("dev probabilities do not match the split")
-    best_score, weights = -1, None
-    for rnn_step in range(11):
-        for char_step in range(11 - rnn_step):
-            candidate = {"rnn": rnn_step / 10, "char": char_step / 10, "lr": (10 - rnn_step - char_step) / 10}
-            blend = sum(candidate[key] * dev_parts[key] for key in candidate)
-            score = float(f1_score(y_dev, blend.argmax(1), average="macro", labels=list(CLASS_IDS)))
-            if score > best_score:
-                best_score, weights = score, candidate
+    weights, best_score = select_weights(dev_parts, y_dev)
     predictor.weights = weights
     logger.info("Frozen weights %s, dev macro-F1 %.8f; evaluating test once", weights, best_score)
     test_parts = {key: np.load(args.source / f"proba_{key}_test.npy") for key in ("rnn", "char")}
     with threadpool_limits(limits=args.threads):
         test_parts["lr"] = lr.predict_proba(texts.iloc[split["test"]].tolist())
-    probabilities = sum(weights[key] * test_parts[key] for key in weights)
-    probabilities /= probabilities.sum(axis=1, keepdims=True)
+    probabilities = blend(test_parts, weights)
     y_test = frame.iloc[split["test"]].is_spam1_or_clickbait2.to_numpy()
     pred = probabilities.argmax(1)
     metrics = {

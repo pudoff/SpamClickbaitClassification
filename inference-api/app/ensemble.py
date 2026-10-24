@@ -185,6 +185,12 @@ class CharCNN(nn.Module):
 file_hash = sha256_of
 
 
+def blend(parts, weights, normalize=True):
+    """Взвешенная смесь вероятностей компонентов; слагаемые суммируются в порядке COMPONENTS."""
+    mixed = sum(weights[key] * parts[key] for key in COMPONENTS)
+    return mixed / mixed.sum(axis=1, keepdims=True) if normalize else mixed
+
+
 class EnsemblePredictor:
     classes_ = np.array(CLASS_IDS)
 
@@ -215,12 +221,10 @@ class EnsemblePredictor:
         batches = []
         for start in range(0, len(cleaned_texts), 64):
             texts = cleaned_texts[start : start + 64]
-            parts = self.component_probabilities(texts)
-            blend = sum(self.weights[key] * parts[key] for key in COMPONENTS)
-            blend = blend / blend.sum(axis=1, keepdims=True)
-            if not np.isfinite(blend).all() or (blend < 0).any():
+            probabilities = blend(self.component_probabilities(texts), self.weights)
+            if not np.isfinite(probabilities).all() or (probabilities < 0).any():
                 raise ValueError("invalid ensemble probability distribution")
-            batches.append(blend)
+            batches.append(probabilities)
         return np.concatenate(batches)
 
 
