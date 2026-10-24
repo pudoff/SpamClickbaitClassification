@@ -1,7 +1,6 @@
 """Файлы артефактов моделей: контрольная сумма и загрузка sklearn-модели."""
 
 import hashlib
-import pickle
 from pathlib import Path
 
 import joblib
@@ -13,8 +12,5 @@ def sha256_of(path: Path | str) -> str:
 
 
 def load_artifact(path: Path):
-    """.joblib — из тренера; .pkl — артефакт из ноутбука (pickle.dump)."""
-    if path.suffix == ".pkl":
-        with path.open("rb") as f:
-            return pickle.load(f)
+    """Модель sklearn: .joblib из тренера или .pkl из ноутбука (pickle.dump) — joblib.load читает оба формата."""
     return joblib.load(path)
