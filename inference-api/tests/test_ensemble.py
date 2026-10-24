@@ -6,53 +6,12 @@ import numpy as np
 import pytest
 import torch
 from app.config import Settings
-from app.ensemble import (
-    CharCNN,
-    Encoding,
-    EnsemblePredictor,
-    SpamClickbaitNet,
-    build_vocabularies,
-    load_ensemble,
-    save_bundle,
-)
+from app.ensemble import load_ensemble
 from app.main import create_app
 from app.text import clean_text
 from fastapi.testclient import TestClient
-from training.train import BASE_CONFIG, build_pipeline
 
-from tests.test_api import TOY_DATA
-
-
-@pytest.fixture(scope="module")
-def ensemble_bundle(tmp_path_factory):
-    torch.set_num_threads(1)
-    torch.manual_seed(42)
-    texts = [clean_text(text) for text, _ in TOY_DATA]
-    labels = np.array([label for _, label in TOY_DATA])
-    encoding = Encoding(max_len=16, max_chars=24, vocab_limit=100, min_freq=1)
-    vocab, char_vocab = build_vocabularies(texts, encoding)
-    lr = build_pipeline({**BASE_CONFIG, "word_min_df": 1, "char_min_df": 1}, labels).fit(texts, labels)
-    predictor = EnsemblePredictor(
-        SpamClickbaitNet(len(vocab), len(char_vocab)),
-        CharCNN(len(char_vocab)),
-        lr,
-        vocab,
-        char_vocab,
-        {"rnn": 0.4, "char": 0.4, "lr": 0.2},
-        encoding,
-    )
-    folder = tmp_path_factory.mktemp("ensemble")
-    path = save_bundle(
-        folder,
-        predictor,
-        {
-            "name": "rnn-cnn-lr",
-            "version": "test",
-            "framework": "PyTorch + scikit-learn",
-            "config": {"weights": predictor.weights, "selection_split": "dev"},
-        },
-    )
-    return path, predictor
+from tests.snapshot import snapshot
 
 
 def test_bundle_roundtrip_and_weighted_probabilities(ensemble_bundle):
@@ -67,6 +26,29 @@ def test_bundle_roundtrip_and_weighted_probabilities(ensemble_bundle):
     assert np.isfinite(actual).all()
     np.testing.assert_allclose(actual.sum(axis=1), 1)
     assert restored.predict_proba([]).shape == (0, 3)
+
+
+SNAPSHOT_TEXTS = [
+    "Вам одобрен кредит, перезвоните по номеру 8-800-555-35-35!",
+    "Шок! Вы не поверите, что она сделала — смотрите до конца",
+    "Буду через десять минут, возьми хлеба",
+    "Скидка 90% только сегодня: https://example.com/sale",
+    "",
+]
+
+
+def test_toy_ensemble_probabilities_snapshot(ensemble_bundle):
+    """Вероятности игрушечного ансамбля до и после загрузки совпадают с сохранёнными (atol=1e-7)."""
+    path, original = ensemble_bundle
+    restored, _ = load_ensemble(path)
+    texts = [clean_text(text) for text in SNAPSHOT_TEXTS]
+    parts = original.component_probabilities(texts)
+    actual = {"blend": original.predict_proba(texts).tolist(), **{key: value.tolist() for key, value in parts.items()}}
+    expected = json.loads(snapshot("toy_ensemble_proba.json", actual))
+    assert list(expected) == ["blend", "rnn", "char", "lr"]
+    for key, value in expected.items():
+        np.testing.assert_allclose(actual[key], value, rtol=0, atol=1e-7)
+    np.testing.assert_allclose(restored.predict_proba(texts), expected["blend"], rtol=0, atol=1e-7)
 
 
 def test_eval_does_not_update_batchnorm(ensemble_bundle):
