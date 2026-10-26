@@ -1,0 +1,16 @@
+# В контекст сборки входят только lock-файл и исходники сервиса.
+# Датасеты, модели, .env, .git и локальные окружения не отправляются Docker.
+**
+!pyproject.toml
+!poetry.lock
+!inference-api/
+!inference-api/Dockerfile
+!inference-api/pyproject.toml
+!inference-api/app/
+!inference-api/app/**
+!inference-api/training/
+!inference-api/training/**
+!inference-api/tests/
+!inference-api/tests/**
+**/__pycache__/
+**/*.pyc

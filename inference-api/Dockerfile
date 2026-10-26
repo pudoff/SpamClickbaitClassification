@@ -1,22 +1,40 @@
 # Один образ для сервиса (uvicorn) и тренера (python -m training.train):
 # модель обучается и загружается одной и той же версией scikit-learn.
-FROM python:3.12-slim
+FROM python:3.12-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
+FROM base AS dependencies
+
+ARG POETRY_VERSION=2.5.1
+RUN python -m venv /opt/poetry \
+    && /opt/poetry/bin/pip install "poetry==${POETRY_VERSION}" \
+    && python -m venv /opt/venv
+
+ENV VIRTUAL_ENV=/opt/venv \
+    PATH="/opt/venv/bin:$PATH" \
+    POETRY_VIRTUALENVS_CREATE=false \
+    POETRY_NO_INTERACTION=1
+
+WORKDIR /build
+COPY pyproject.toml poetry.lock ./
+RUN /opt/poetry/bin/poetry check --lock \
+    && /opt/poetry/bin/poetry sync --only main,training,dev --no-root
+
+FROM base AS runtime
+
+ENV VIRTUAL_ENV=/opt/venv \
+    PATH="/opt/venv/bin:$PATH"
+
 WORKDIR /srv
-
-COPY requirements.txt requirements-dev.txt ./
-RUN pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
-RUN pip install -r requirements-dev.txt
-
-COPY app ./app
-COPY training ./training
-COPY tests ./tests
-COPY pyproject.toml ./
+COPY --from=dependencies /opt/venv /opt/venv
+COPY inference-api/app ./app
+COPY inference-api/training ./training
+COPY inference-api/tests ./tests
+COPY inference-api/pyproject.toml ./
 
 RUN useradd --create-home --uid 1000 appuser && mkdir -p /models && chown appuser /models /srv
 USER appuser
