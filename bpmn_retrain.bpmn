@@ -1,0 +1,1015 @@
+<?xml version='1.0' encoding='utf-8'?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_Process_Retrain" targetNamespace="https://github.com/pudoff/SpamClickbaitClassification/bpmn" exporter="SpamClickbaitClassification" exporterVersion="ensemble-retrain-20261026">
+  <bpmn:error id="OperationError" name="Ошибка шага процесса" errorCode="OPERATION_FAILED" />
+  <bpmn:process id="Process_Retrain" name="Проект переобучения ансамбля RNN + char-CNN + LR" isExecutable="false">
+    <bpmn:documentation>Проект процесса для учебного задания. Реализованы компоненты модели, ноутбуки, экспорт и FastAPI. Автоматические сбор данных, согласования, мониторинг, retraining, деплой и Telegram-уведомления по этой схеме ещё не развёрнуты. Подбор по dev macro-F1 отделён от AUC-аукциона на независимом release-eval. Никаких изменений данных, кода модели и порогов при создании схемы не выполняется.</bpmn:documentation>
+    <bpmn:laneSet id="LaneSet_Retrain">
+      <bpmn:lane id="Lane_PM" name="PM / QA · решение о переобучении">
+        <bpmn:flowNodeRef>R01_Trigger</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>R02_Request</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>R04_ApprovePlan</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>G05_Worth</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>R03_Reject</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_Reject</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Data" name="Команда данных · сбор, разметка и разбиение">
+        <bpmn:flowNodeRef>R05_CollectData</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>R06_ValidateData</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>G06_DataOk</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>R07_Split</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>R_DataStop</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_DataStop</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_ML" name="ML-команда · обучение и выбор настроек">
+        <bpmn:flowNodeRef>R08_Train</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>R09_Tune</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>G07_Dev</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>R10_Analyse</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>G08_Retry</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>R11_Pause</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_Pause</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>B_Train</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Release" name="PM / QA + Backend · независимая оценка и выпуск">
+        <bpmn:flowNodeRef>R12_AnalystValidate</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>G_Validated</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>R_Evaluate</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>G_Auction</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>R14_ApproveDeploy</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>G_DeployApproved</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>R15_Register</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>R16_Deploy</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>G_Smoke</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>R_Success</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_InProd</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>G_KeepMerge</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>R_Keep</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>R_NotifyKeep</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_Kept</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>R_Rollback</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>G_Rollback</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>R_NotifyRollback</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_RolledBack</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>R_ManualRecovery</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>R_NotifyRecovery</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_Recovery</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>B_Evaluate</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>B_Register</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>B_Deploy</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>B_Rollback</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="R01_Trigger" name="Сигнал / заявка&#10;на переобучение">
+      <bpmn:documentation>Связь с bpmn_operation.bpmn. Подтверждённое ухудшение качества, новые данные, сигнал дрейфа или обоснованная заявка запускают рассмотрение, а не автоматический выпуск.</bpmn:documentation>
+      <bpmn:outgoing>sf_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="R02_Request" name="Записать причину; сохранить&#10;текущую версию модели&#10;и параметры политики">
+      <bpmn:documentation>Создать run_id, зафиксировать bundle, образ, код, данные, нормализацию и пороги действующей версии для сравнения и отката. attempt=0. Не запускать два конфликтующих цикла одновременно.</bpmn:documentation>
+      <bpmn:incoming>sf_1</bpmn:incoming>
+      <bpmn:outgoing>sf_plan</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:userTask id="R04_ApprovePlan" name="PM / QA: согласовать&#10;данные, критерии качества&#10;и план переобучения">
+      <bpmn:documentation>До обучения согласовать ограничения macro-F1, precision спама, ложного спама у обычных, coverage и времени ответа. Обсудить затраты и качество разметки. Порог PSI сам по себе не доказывает падение качества.</bpmn:documentation>
+      <bpmn:incoming>sf_plan</bpmn:incoming>
+      <bpmn:outgoing>sf_plan_gate</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="G05_Worth" name="План&#10;согласован?" default="sf_plan_no">
+      <bpmn:documentation>Одобрение человека необходимо для продолжения.</bpmn:documentation>
+      <bpmn:incoming>sf_plan_gate</bpmn:incoming>
+      <bpmn:outgoing>sf_plan_no</bpmn:outgoing>
+      <bpmn:outgoing>sf_plan_yes</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sendTask id="R03_Reject" name="Оставить действующую модель;&#10;записать причину отказа&#10;и уведомить Telegram">
+      <bpmn:documentation>Итог kept. Уведомление — проект интеграции; фактическое сообщение сейчас не отправляется.</bpmn:documentation>
+      <bpmn:incoming>sf_plan_no</bpmn:incoming>
+      <bpmn:outgoing>sf_plan_end</bpmn:outgoing>
+    </bpmn:sendTask>
+    <bpmn:endEvent id="End_Reject" name="Без замены модели">
+      <bpmn:documentation>Отказ в начале цикла не меняет действующий сервис.</bpmn:documentation>
+      <bpmn:incoming>sf_plan_end</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="R05_CollectData" name="Собрать свежие примеры&#10;и зафиксировать&#10;версию данных">
+      <bpmn:documentation>С согласия собрать сообщения и, при наличии, ASR-транскрипты. Сохранить источник, время, диктора/шаблон. Отзывы пользователей до проверки не считаются достоверными метками. Версионировать данные, правила очистки и SHA-256; большие артефакты не хранить обычными Git-блобами.</bpmn:documentation>
+      <bpmn:incoming>sf_plan_yes</bpmn:incoming>
+      <bpmn:outgoing>sf_7</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:userTask id="R06_ValidateData" name="Проверить разметку,&#10;очистку и дубликаты">
+      <bpmn:documentation>Ручная проверка спорных меток вместе с автоматическими проверками: классы 0/1/2, пропуски, повторы, минимум русских слов, точные и близкие дубликаты, происхождение и согласие на использование. Не балансировать выборку удалением тестовых примеров.</bpmn:documentation>
+      <bpmn:incoming>sf_7</bpmn:incoming>
+      <bpmn:outgoing>sf_8</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="G06_DataOk" name="Данные&#10;пригодны?" default="sf_data_no">
+      <bpmn:documentation>Достаточны объём и качество; представлены все три класса. Критерии утверждены до эксперимента.</bpmn:documentation>
+      <bpmn:incoming>sf_8</bpmn:incoming>
+      <bpmn:outgoing>sf_data_yes</bpmn:outgoing>
+      <bpmn:outgoing>sf_data_no</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="R07_Split" name="Разделить по группам:&#10;обучение / валидация /&#10;независимая оценка">
+      <bpmn:documentation>Протокол fit/dev/test с целевыми долями групп 72/8/20 и seed=42; состав новых партий фиксируется до обучения. Учитывать нормализованный текст, близкие дубли, источники и, для голоса, диктора/шаблон. Синтетические TTS-варианты только в fit, вместе с исходным текстом. Исторический test не переиспользовать для подбора следующих выпусков.</bpmn:documentation>
+      <bpmn:incoming>sf_data_yes</bpmn:incoming>
+      <bpmn:outgoing>sf_11</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sendTask id="R_DataStop" name="Оставить действующую модель;&#10;описать проблемы данных&#10;и уведомить Telegram">
+      <bpmn:documentation>Данных недостаточно или разметка не прошла проверку. Следующая попытка требует исправленных данных и отдельной заявки.</bpmn:documentation>
+      <bpmn:incoming>sf_data_no</bpmn:incoming>
+      <bpmn:outgoing>sf_data_end</bpmn:outgoing>
+    </bpmn:sendTask>
+    <bpmn:endEvent id="End_DataStop" name="Нужна доработка данных">
+      <bpmn:documentation>Сервис продолжает работать с прежней моделью.</bpmn:documentation>
+      <bpmn:incoming>sf_data_end</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:subProcess id="R08_Train" name="Обучить компоненты ансамбля&#10;на обучающей выборке">
+      <bpmn:documentation>Проект единого процесса обучения, а не уже установленный retraining-сервис. При входе attempt += 1. Обучаемые словари и TF-IDF строятся только на fit. Все компоненты используют согласованную версию нормализации; подготовленный test не читается. Вложенные стрелки показывают порядок работ, а не каскад предсказаний.</bpmn:documentation>
+      <bpmn:incoming>sf_11</bpmn:incoming>
+      <bpmn:incoming>sf_retry_yes</bpmn:incoming>
+      <bpmn:outgoing>sf_tune</bpmn:outgoing>
+      <bpmn:startEvent id="Train_Start" name="">
+        <bpmn:documentation>Начало одной попытки обучения.</bpmn:documentation>
+        <bpmn:outgoing>sf_train_rnn</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:serviceTask id="Train_RNN" name="RNN: BiGRU + attention&#10;+ символьная CNN&#10;и признаки текста">
+        <bpmn:documentation>Обучить SpamClickbaitNet на fit, сохранить чекпойнты и историю валидации. Выбор лучшей эпохи выполняется по dev, не по test.</bpmn:documentation>
+        <bpmn:incoming>sf_train_rnn</bpmn:incoming>
+        <bpmn:outgoing>sf_train_cnn</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="Train_CNN" name="Отдельная char-CNN&#10;+ признаки текста">
+        <bpmn:documentation>Обучить самостоятельный символьный компонент ансамбля на fit; сохранить чекпойнты для выбора по dev.</bpmn:documentation>
+        <bpmn:incoming>sf_train_cnn</bpmn:incoming>
+        <bpmn:outgoing>sf_train_lr</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="Train_LR" name="TF-IDF (слова + символы)&#10;+ LogisticRegression">
+        <bpmn:documentation>TF-IDF обучить только на fit. Гиперпараметры выбирать через групповой CV на fit или согласованную dev-процедуру; независимая оценка не участвует.</bpmn:documentation>
+        <bpmn:incoming>sf_train_lr</bpmn:incoming>
+        <bpmn:outgoing>sf_train_save</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="Train_Save" name="Сохранить модели,&#10;словари и параметры&#10;для проверки на валидации">
+        <bpmn:documentation>Сохранить чекпойнты, TF-IDF/LR, словари, seed, версии библиотек, split_id и происхождение данных. Сами веса ещё не являются разрешением на выпуск.</bpmn:documentation>
+        <bpmn:incoming>sf_train_save</bpmn:incoming>
+        <bpmn:outgoing>sf_train_end</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:endEvent id="Train_End" name="Компоненты готовы">
+        <bpmn:documentation>Вернуться к выбору настроек по валидационной выборке.</bpmn:documentation>
+        <bpmn:incoming>sf_train_end</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="sf_train_rnn" sourceRef="Train_Start" targetRef="Train_RNN" name="" />
+      <bpmn:sequenceFlow id="sf_train_cnn" sourceRef="Train_RNN" targetRef="Train_CNN" name="" />
+      <bpmn:sequenceFlow id="sf_train_lr" sourceRef="Train_CNN" targetRef="Train_LR" name="" />
+      <bpmn:sequenceFlow id="sf_train_save" sourceRef="Train_LR" targetRef="Train_Save" name="" />
+      <bpmn:sequenceFlow id="sf_train_end" sourceRef="Train_Save" targetRef="Train_End" name="" />
+      <bpmn:textAnnotation id="AN_Train">
+        <bpmn:text>RNN + char-CNN + TF-IDF/LR
+Каждый компонент обучается на своих признаках
+одного и того же обучающего корпуса.
+Стрелки показывают порядок работ,
+а не передачу прогноза между моделями.
+Нормализация, словари и код фиксируются.
+Тестовая часть не участвует в обучении.</bpmn:text>
+      </bpmn:textAnnotation>
+    </bpmn:subProcess>
+    <bpmn:serviceTask id="R09_Tune" name="Выбрать чекпойнты и веса&#10;RNN / CNN / LR по macro-F1&#10;на валидационной выборке">
+      <bpmn:documentation>Веса неотрицательны и дают сумму 1. Для новой версии подбираются заново, а не фиксируются автоматически в 0.5/0.2/0.3. Пороги отказа также можно выбирать только на заранее выделенной валидации. Калибровка, если добавляется, требует отдельной согласованной процедуры без test.</bpmn:documentation>
+      <bpmn:incoming>sf_tune</bpmn:incoming>
+      <bpmn:outgoing>sf_dev_gate</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="G07_Dev" name="Проверки на&#10;валидации пройдены?" default="sf_dev_no">
+      <bpmn:documentation>Автоматические проверки на dev: согласованные метрики по классам, отсутствие NaN, формат вероятностей, совместимость компонентов и ресурсные ограничения.</bpmn:documentation>
+      <bpmn:incoming>sf_dev_gate</bpmn:incoming>
+      <bpmn:outgoing>sf_dev_no</bpmn:outgoing>
+      <bpmn:outgoing>sf_dev_yes</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="R10_Analyse" name="Разобрать ошибки&#10;на валидационной выборке&#10;и уточнить гипотезу">
+      <bpmn:documentation>Анализировать dev, ошибки разметки и код. Не открывать независимый набор для итеративного улучшения. Повтор допустим только до финальной оценки.</bpmn:documentation>
+      <bpmn:incoming>sf_dev_no</bpmn:incoming>
+      <bpmn:outgoing>sf_retry_gate</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="G08_Retry" name="Было меньше&#10;трёх попыток?" default="sf_retry_no">
+      <bpmn:documentation>Ограничение числа попыток — проектное правило. После трёх неуспешных запусков требуется отдельный разбор, а не бесконечный цикл.</bpmn:documentation>
+      <bpmn:incoming>sf_retry_gate</bpmn:incoming>
+      <bpmn:outgoing>sf_retry_yes</bpmn:outgoing>
+      <bpmn:outgoing>sf_retry_no</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sendTask id="R11_Pause" name="Оставить действующую модель;&#10;записать причину остановки&#10;и уведомить Telegram">
+      <bpmn:documentation>Исчерпаны попытки или обучение завершилось ошибкой. Сохранить журнал эксперимента; не подменять действующую версию.</bpmn:documentation>
+      <bpmn:incoming>sf_retry_no</bpmn:incoming>
+      <bpmn:incoming>sf_train_error</bpmn:incoming>
+      <bpmn:outgoing>sf_pause_end</bpmn:outgoing>
+    </bpmn:sendTask>
+    <bpmn:endEvent id="End_Pause" name="Нужен разбор">
+      <bpmn:documentation>Завершение без изменения действующего сервиса.</bpmn:documentation>
+      <bpmn:incoming>sf_pause_end</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:userTask id="R12_AnalystValidate" name="PM / QA: проверить новую&#10;версию, отчёт, данные&#10;и воспроизводимость">
+      <bpmn:documentation>Обязательная ручная валидация перед сравнением версий: отсутствие утечек, метрики dev по классам, код, настройки, согласие на данные и пригодность для целевого домена.</bpmn:documentation>
+      <bpmn:incoming>sf_dev_yes</bpmn:incoming>
+      <bpmn:outgoing>sf_validate_gate</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="G_Validated" name="Проверка&#10;одобрена?" default="sf_validate_no">
+      <bpmn:documentation>Отказ человека сохраняет прежнюю версию. Новая попытка требует новой заявки.</bpmn:documentation>
+      <bpmn:incoming>sf_validate_gate</bpmn:incoming>
+      <bpmn:outgoing>sf_validate_yes</bpmn:outgoing>
+      <bpmn:outgoing>sf_validate_no</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="R_Evaluate" name="Оценить обе готовые версии&#10;на одном новом независимом&#10;наборе: ROC-AUC OVR и F1">
+      <bpmn:documentation>Заморозить новую и действующую версии, веса, пороги и release-eval до расчёта. Для обеих использовать одинаковые записи и метки. Считать ROC-AUC macro OVR, macro-F1, precision/recall классов, ложный спам у обычных, coverage и время ответа. После просмотра результатов не возвращаться к настройке на этом же наборе.</bpmn:documentation>
+      <bpmn:incoming>sf_validate_yes</bpmn:incoming>
+      <bpmn:outgoing>sf_evaluate_gate</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="G_Auction" name="Новая версия&#10;лучше?" default="sf_auction_no">
+      <bpmn:documentation>AUC-аукцион — требование учебного задания. Новая версия должна выиграть по ROC-AUC macro OVR с заранее согласованным запасом и выполнить ограничения macro-F1, precision спама, coverage и ресурсов. При равенстве или недостаточной уверенности оставить прежнюю.</bpmn:documentation>
+      <bpmn:incoming>sf_evaluate_gate</bpmn:incoming>
+      <bpmn:outgoing>sf_auction_yes</bpmn:outgoing>
+      <bpmn:outgoing>sf_auction_no</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="R14_ApproveDeploy" name="PM / QA: согласовать&#10;замену модели&#10;по итогам сравнения">
+      <bpmn:documentation>Отдельное согласование выпуска. Подписать решение и комментарий. Высокий AUC сам по себе не разрешает деплой.</bpmn:documentation>
+      <bpmn:incoming>sf_auction_yes</bpmn:incoming>
+      <bpmn:outgoing>sf_release_gate</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="G_DeployApproved" name="Выпуск&#10;согласован?" default="sf_release_no">
+      <bpmn:documentation>Отказ в выпуске сохраняет действующую версию.</bpmn:documentation>
+      <bpmn:incoming>sf_release_gate</bpmn:incoming>
+      <bpmn:outgoing>sf_release_yes</bpmn:outgoing>
+      <bpmn:outgoing>sf_release_no</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="R15_Register" name="Подготовить новый комплект&#10;manifest + веса + словари;&#10;обновить Model Card">
+      <bpmn:documentation>Сохранить совместимые rnn.pt, char.pt, lr.joblib, vocab.json, manifest.json; SHA-256, версии кода/данных/библиотек, normalizer и политику отказа. Обновить Model Card результатами этой версии. Артефакты версионируются отдельно от обычных Git-коммитов; SAS Model Manager не используется.</bpmn:documentation>
+      <bpmn:incoming>sf_release_yes</bpmn:incoming>
+      <bpmn:outgoing>sf_register_deploy</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="R16_Deploy" name="Развернуть новую версию;&#10;проверить /healthcheck,&#10;/model-info и /predict">
+      <bpmn:documentation>Проект управляемого деплоя в Docker Compose: сохранить предыдущие bundle, образ и пороги; развернуть согласованную версию и выполнить smoke. Не использовать не реализованный canary как готовую возможность.</bpmn:documentation>
+      <bpmn:incoming>sf_register_deploy</bpmn:incoming>
+      <bpmn:outgoing>sf_smoke_gate</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="G_Smoke" name="Проверки API&#10;успешны?" default="sf_smoke_no">
+      <bpmn:documentation>Проверить загруженную версию, целостность, ответы, распределение вероятностей, пороги и доступность. Ошибка ведёт к откату.</bpmn:documentation>
+      <bpmn:incoming>sf_smoke_gate</bpmn:incoming>
+      <bpmn:outgoing>sf_smoke_yes</bpmn:outgoing>
+      <bpmn:outgoing>sf_smoke_no</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sendTask id="R_Success" name="Зафиксировать выпуск&#10;и уведомить Telegram:&#10;версия, метрики, ссылки">
+      <bpmn:documentation>Итог deployed. В сообщении версии, release-eval, метрики обеих моделей, решение PM, ссылки на отчёт и Model Card. Не включать сырые пользовательские тексты, аудио и токены. Доставка ограниченно повторяется; её сбой журналируется и не отменяет успешный выпуск.</bpmn:documentation>
+      <bpmn:incoming>sf_smoke_yes</bpmn:incoming>
+      <bpmn:outgoing>sf_success_end</bpmn:outgoing>
+    </bpmn:sendTask>
+    <bpmn:endEvent id="End_InProd" name="Новая версия&#10;в эксплуатации">
+      <bpmn:documentation>Возврат к мониторингу из bpmn_operation.bpmn. Проверять качество после выпуска на новых проверенных метках.</bpmn:documentation>
+      <bpmn:incoming>sf_success_end</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:exclusiveGateway id="G_KeepMerge" name="">
+      <bpmn:documentation>Объединение альтернатив отказа до замены модели; не параллельное ожидание.</bpmn:documentation>
+      <bpmn:incoming>sf_validate_no</bpmn:incoming>
+      <bpmn:incoming>sf_auction_no</bpmn:incoming>
+      <bpmn:incoming>sf_release_no</bpmn:incoming>
+      <bpmn:incoming>sf_eval_error</bpmn:incoming>
+      <bpmn:incoming>sf_register_error</bpmn:incoming>
+      <bpmn:outgoing>sf_kept</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="R_Keep" name="Сохранить действующую&#10;версию и записать&#10;причину отказа">
+      <bpmn:documentation>Итог kept. Независимый набор не превращается в новую dev-выборку. Новый цикл требует новых данных/независимой проверки и отдельного решения.</bpmn:documentation>
+      <bpmn:incoming>sf_kept</bpmn:incoming>
+      <bpmn:outgoing>sf_notify_keep</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sendTask id="R_NotifyKeep" name="Уведомить Telegram:&#10;модель сохранена,&#10;причина и отчёт">
+      <bpmn:documentation>Метрики указывать только если они были рассчитаны; отказ до независимой оценки не должен сопровождаться вымышленным AUC. Проблема доставки не меняет фактическое состояние модели.</bpmn:documentation>
+      <bpmn:incoming>sf_notify_keep</bpmn:incoming>
+      <bpmn:outgoing>sf_keep_end</bpmn:outgoing>
+    </bpmn:sendTask>
+    <bpmn:endEvent id="End_Kept" name="Прежняя версия&#10;в эксплуатации">
+      <bpmn:documentation>Процесс завершён без замены модели.</bpmn:documentation>
+      <bpmn:incoming>sf_keep_end</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="R_Rollback" name="Восстановить прежний&#10;комплект, образ и пороги;&#10;проверить работоспособность">
+      <bpmn:documentation>Откат касается всего совместимого комплекта, версии образа и политики. Никакой молчаливой замены ансамбля на LR.</bpmn:documentation>
+      <bpmn:incoming>sf_smoke_no</bpmn:incoming>
+      <bpmn:incoming>sf_deploy_error</bpmn:incoming>
+      <bpmn:outgoing>sf_rollback_gate</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="G_Rollback" name="Откат&#10;подтверждён?" default="sf_rollback_no">
+      <bpmn:documentation>Успешный откат должен подтверждаться проверкой сервиса и версии. Ошибка отката требует ручного восстановления.</bpmn:documentation>
+      <bpmn:incoming>sf_rollback_gate</bpmn:incoming>
+      <bpmn:outgoing>sf_rollback_yes</bpmn:outgoing>
+      <bpmn:outgoing>sf_rollback_no</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sendTask id="R_NotifyRollback" name="Уведомить Telegram:&#10;выполнен откат,&#10;действующая версия и причина">
+      <bpmn:documentation>Итог rolled_back только после успешной проверки прежней версии.</bpmn:documentation>
+      <bpmn:incoming>sf_rollback_yes</bpmn:incoming>
+      <bpmn:outgoing>sf_rollback_end</bpmn:outgoing>
+    </bpmn:sendTask>
+    <bpmn:endEvent id="End_RolledBack" name="Прежняя версия&#10;восстановлена">
+      <bpmn:documentation>Возобновить мониторинг действующей версии.</bpmn:documentation>
+      <bpmn:incoming>sf_rollback_end</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:userTask id="R_ManualRecovery" name="Backend / PM: восстановить&#10;сервис вручную&#10;и проверить его состояние">
+      <bpmn:documentation>Не считать откат успешным без проверки. Зафиксировать фактически доступную версию или недоступность сервиса.</bpmn:documentation>
+      <bpmn:incoming>sf_rollback_no</bpmn:incoming>
+      <bpmn:incoming>sf_rollback_error</bpmn:incoming>
+      <bpmn:outgoing>sf_recovery_notify</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sendTask id="R_NotifyRecovery" name="Уведомить Telegram:&#10;результат восстановления&#10;или недоступность сервиса">
+      <bpmn:documentation>Итог manual_recovery или unavailable по фактическому состоянию. Ошибка уведомления регистрируется отдельно и не меняет состояние сервиса.</bpmn:documentation>
+      <bpmn:incoming>sf_recovery_notify</bpmn:incoming>
+      <bpmn:outgoing>sf_recovery_end</bpmn:outgoing>
+    </bpmn:sendTask>
+    <bpmn:endEvent id="End_Recovery" name="Фактический статус&#10;зафиксирован">
+      <bpmn:documentation>Завершение с документированным результатом ручного восстановления.</bpmn:documentation>
+      <bpmn:incoming>sf_recovery_end</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:boundaryEvent id="B_Train" attachedToRef="R08_Train" cancelActivity="true">
+      <bpmn:documentation>Прерывающая ошибка шага. Действующая версия не заменяется без успешных проверок.</bpmn:documentation>
+      <bpmn:outgoing>sf_train_error</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="Error_B_Train" errorRef="OperationError" />
+    </bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="B_Evaluate" attachedToRef="R_Evaluate" cancelActivity="true">
+      <bpmn:documentation>Прерывающая ошибка шага. Действующая версия не заменяется без успешных проверок.</bpmn:documentation>
+      <bpmn:outgoing>sf_eval_error</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="Error_B_Evaluate" errorRef="OperationError" />
+    </bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="B_Register" attachedToRef="R15_Register" cancelActivity="true">
+      <bpmn:documentation>Прерывающая ошибка шага. Действующая версия не заменяется без успешных проверок.</bpmn:documentation>
+      <bpmn:outgoing>sf_register_error</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="Error_B_Register" errorRef="OperationError" />
+    </bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="B_Deploy" attachedToRef="R16_Deploy" cancelActivity="true">
+      <bpmn:documentation>Прерывающая ошибка шага. Действующая версия не заменяется без успешных проверок.</bpmn:documentation>
+      <bpmn:outgoing>sf_deploy_error</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="Error_B_Deploy" errorRef="OperationError" />
+    </bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="B_Rollback" attachedToRef="R_Rollback" cancelActivity="true">
+      <bpmn:documentation>Прерывающая ошибка шага. Действующая версия не заменяется без успешных проверок.</bpmn:documentation>
+      <bpmn:outgoing>sf_rollback_error</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="Error_B_Rollback" errorRef="OperationError" />
+    </bpmn:boundaryEvent>
+    <bpmn:sequenceFlow id="sf_1" sourceRef="R01_Trigger" targetRef="R02_Request" name="" />
+    <bpmn:sequenceFlow id="sf_plan" sourceRef="R02_Request" targetRef="R04_ApprovePlan" name="" />
+    <bpmn:sequenceFlow id="sf_plan_gate" sourceRef="R04_ApprovePlan" targetRef="G05_Worth" name="" />
+    <bpmn:sequenceFlow id="sf_plan_no" sourceRef="G05_Worth" targetRef="R03_Reject" name="Нет" />
+    <bpmn:sequenceFlow id="sf_plan_end" sourceRef="R03_Reject" targetRef="End_Reject" name="" />
+    <bpmn:sequenceFlow id="sf_plan_yes" sourceRef="G05_Worth" targetRef="R05_CollectData" name="Да">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">plan_approved</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="sf_7" sourceRef="R05_CollectData" targetRef="R06_ValidateData" name="" />
+    <bpmn:sequenceFlow id="sf_8" sourceRef="R06_ValidateData" targetRef="G06_DataOk" name="" />
+    <bpmn:sequenceFlow id="sf_data_yes" sourceRef="G06_DataOk" targetRef="R07_Split" name="Да">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">data_approved</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="sf_data_no" sourceRef="G06_DataOk" targetRef="R_DataStop" name="Нет" />
+    <bpmn:sequenceFlow id="sf_data_end" sourceRef="R_DataStop" targetRef="End_DataStop" name="" />
+    <bpmn:sequenceFlow id="sf_11" sourceRef="R07_Split" targetRef="R08_Train" name="" />
+    <bpmn:sequenceFlow id="sf_tune" sourceRef="R08_Train" targetRef="R09_Tune" name="" />
+    <bpmn:sequenceFlow id="sf_dev_gate" sourceRef="R09_Tune" targetRef="G07_Dev" name="" />
+    <bpmn:sequenceFlow id="sf_dev_no" sourceRef="G07_Dev" targetRef="R10_Analyse" name="Нет" />
+    <bpmn:sequenceFlow id="sf_dev_yes" sourceRef="G07_Dev" targetRef="R12_AnalystValidate" name="Да">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">dev_checks_passed</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="sf_retry_gate" sourceRef="R10_Analyse" targetRef="G08_Retry" name="" />
+    <bpmn:sequenceFlow id="sf_retry_yes" sourceRef="G08_Retry" targetRef="R08_Train" name="Да: следующая попытка">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">attempt &lt; 3</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="sf_retry_no" sourceRef="G08_Retry" targetRef="R11_Pause" name="Нет" />
+    <bpmn:sequenceFlow id="sf_pause_end" sourceRef="R11_Pause" targetRef="End_Pause" name="" />
+    <bpmn:sequenceFlow id="sf_train_error" sourceRef="B_Train" targetRef="R11_Pause" name="Ошибка обучения" />
+    <bpmn:sequenceFlow id="sf_validate_gate" sourceRef="R12_AnalystValidate" targetRef="G_Validated" name="" />
+    <bpmn:sequenceFlow id="sf_validate_yes" sourceRef="G_Validated" targetRef="R_Evaluate" name="Да">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">validation_approved</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="sf_validate_no" sourceRef="G_Validated" targetRef="G_KeepMerge" name="Нет" />
+    <bpmn:sequenceFlow id="sf_evaluate_gate" sourceRef="R_Evaluate" targetRef="G_Auction" name="" />
+    <bpmn:sequenceFlow id="sf_auction_yes" sourceRef="G_Auction" targetRef="R14_ApproveDeploy" name="Да">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">auc_improved and quality_constraints_passed</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="sf_auction_no" sourceRef="G_Auction" targetRef="G_KeepMerge" name="Нет / равенство" />
+    <bpmn:sequenceFlow id="sf_release_gate" sourceRef="R14_ApproveDeploy" targetRef="G_DeployApproved" name="" />
+    <bpmn:sequenceFlow id="sf_release_yes" sourceRef="G_DeployApproved" targetRef="R15_Register" name="Да">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">release_approved</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="sf_release_no" sourceRef="G_DeployApproved" targetRef="G_KeepMerge" name="Нет" />
+    <bpmn:sequenceFlow id="sf_register_deploy" sourceRef="R15_Register" targetRef="R16_Deploy" name="" />
+    <bpmn:sequenceFlow id="sf_smoke_gate" sourceRef="R16_Deploy" targetRef="G_Smoke" name="" />
+    <bpmn:sequenceFlow id="sf_smoke_yes" sourceRef="G_Smoke" targetRef="R_Success" name="Да">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">smoke_passed</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="sf_success_end" sourceRef="R_Success" targetRef="End_InProd" name="" />
+    <bpmn:sequenceFlow id="sf_kept" sourceRef="G_KeepMerge" targetRef="R_Keep" name="" />
+    <bpmn:sequenceFlow id="sf_notify_keep" sourceRef="R_Keep" targetRef="R_NotifyKeep" name="" />
+    <bpmn:sequenceFlow id="sf_keep_end" sourceRef="R_NotifyKeep" targetRef="End_Kept" name="" />
+    <bpmn:sequenceFlow id="sf_eval_error" sourceRef="B_Evaluate" targetRef="G_KeepMerge" name="" />
+    <bpmn:sequenceFlow id="sf_register_error" sourceRef="B_Register" targetRef="G_KeepMerge" name="" />
+    <bpmn:sequenceFlow id="sf_smoke_no" sourceRef="G_Smoke" targetRef="R_Rollback" name="Нет" />
+    <bpmn:sequenceFlow id="sf_deploy_error" sourceRef="B_Deploy" targetRef="R_Rollback" name="" />
+    <bpmn:sequenceFlow id="sf_rollback_gate" sourceRef="R_Rollback" targetRef="G_Rollback" name="" />
+    <bpmn:sequenceFlow id="sf_rollback_yes" sourceRef="G_Rollback" targetRef="R_NotifyRollback" name="Да">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">rollback_verified</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="sf_rollback_end" sourceRef="R_NotifyRollback" targetRef="End_RolledBack" name="" />
+    <bpmn:sequenceFlow id="sf_rollback_no" sourceRef="G_Rollback" targetRef="R_ManualRecovery" name="Нет" />
+    <bpmn:sequenceFlow id="sf_rollback_error" sourceRef="B_Rollback" targetRef="R_ManualRecovery" name="Ошибка отката" />
+    <bpmn:sequenceFlow id="sf_recovery_notify" sourceRef="R_ManualRecovery" targetRef="R_NotifyRecovery" name="" />
+    <bpmn:sequenceFlow id="sf_recovery_end" sourceRef="R_NotifyRecovery" targetRef="End_Recovery" name="" />
+    <bpmn:textAnnotation id="AN_Status">
+      <bpmn:text>ПРОЕКТ процесса. Ноутбуки, экспорт и FastAPI существуют;
+автоматический retraining и уведомления ещё не развёрнуты.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="AN_Trigger">
+      <bpmn:text>Пример сигнала дрейфа: PSI &gt; 0,20 в двух последовательных окнах по ≥ 500 сообщений. Это повод проверить данные.
+Дрейф не доказывает ухудшение качества; запуск обучения и выпуск требуют согласования.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="AN_Data">
+      <bpmn:text>ДАННЫЕ И РАЗМЕТКА
+Отзывы пользователей сначала проверяются человеком.
+Дубли, источники, дикторы и TTS-шаблоны не должны
+пересекать обучение, валидацию и независимую оценку.
+TTS — только в обучающей части.
+Фиксируются версия, происхождение, правила очистки
+и отпечаток подготовленной таблицы.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="AN_Dev">
+      <bpmn:text>ПОДБОР — ПО ВАЛИДАЦИИ
+Macro-F1 — основная метрика выбора настроек: каждый из трёх классов имеет одинаковый вес.
+Чекпойнты, веса ансамбля и пороги нельзя подбирать на независимой оценочной выборке.
+Повторные попытки ограничены и разрешены только на этапе разработки.
+Новая версия может иметь другие веса: 0,5 / 0,2 / 0,3 относятся к текущему выпущенному комплекту.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="AN_Independent">
+      <bpmn:text>НЕЗАВИСИМАЯ ОЦЕНКА — ПОСЛЕ ЗАМОРОЗКИ
+Действующая и новая модели оцениваются на одном свежем наборе.
+Исторические метрики из Model Card не заменяют такое сравнение.
+Если итоговая оценка не пройдена, действующая модель сохраняется.
+Обратного перехода к обучению на основании этого же теста нет.
+Качество на ASR-транскриптах оценивается отдельно от печатного корпуса.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="AN_Auction">
+      <bpmn:text>СРАВНЕНИЕ И СОГЛАСОВАНИЕ
+ROC-AUC macro OVR используется для AUC-аукциона по учебному заданию.
+До эксперимента согласуются запас улучшения и ограничения
+по macro-F1, precision спама, ложным срабатываниям, coverage и времени ответа.
+При равенстве или провале обязательной проверки остаётся прежняя версия.
+Согласование выпуска выполняется человеком.
+Успешная доставка Telegram не подменяет проверку работоспособности модели.</bpmn:text>
+    </bpmn:textAnnotation>
+  </bpmn:process>
+  <bpmn:collaboration id="Collaboration_Process_Retrain">
+    <bpmn:participant id="Pool_Retrain" processRef="Process_Retrain" name="Переобучение ансамбля · проект процесса с ручным согласованием" />
+  </bpmn:collaboration>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_Process_Retrain">
+    <bpmndi:BPMNPlane id="BPMNPlane_Process_Retrain" bpmnElement="Collaboration_Process_Retrain">
+      <bpmndi:BPMNShape id="Pool_Retrain_di" bpmnElement="Pool_Retrain" isHorizontal="true">
+        <dc:Bounds x="40" y="60" width="3300" height="2020" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_PM_di" bpmnElement="Lane_PM" isHorizontal="true">
+        <dc:Bounds x="70" y="60" width="3270" height="320" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Data_di" bpmnElement="Lane_Data" isHorizontal="true">
+        <dc:Bounds x="70" y="380" width="3270" height="340" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_ML_di" bpmnElement="Lane_ML" isHorizontal="true">
+        <dc:Bounds x="70" y="720" width="3270" height="700" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Release_di" bpmnElement="Lane_Release" isHorizontal="true">
+        <dc:Bounds x="70" y="1420" width="3270" height="660" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R01_Trigger_di" bpmnElement="R01_Trigger">
+        <dc:Bounds x="120" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="90" y="230" width="150" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R02_Request_di" bpmnElement="R02_Request">
+        <dc:Bounds x="220" y="155" width="250" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R04_ApprovePlan_di" bpmnElement="R04_ApprovePlan">
+        <dc:Bounds x="560" y="155" width="250" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G05_Worth_di" bpmnElement="G05_Worth">
+        <dc:Bounds x="900" y="170" width="60" height="60" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="825" y="110" width="220" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R03_Reject_di" bpmnElement="R03_Reject">
+        <dc:Bounds x="1390" y="155" width="270" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Reject_di" bpmnElement="End_Reject">
+        <dc:Bounds x="1770" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1700" y="230" width="190" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R05_CollectData_di" bpmnElement="R05_CollectData">
+        <dc:Bounds x="810" y="460" width="240" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R06_ValidateData_di" bpmnElement="R06_ValidateData">
+        <dc:Bounds x="1130" y="460" width="240" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G06_DataOk_di" bpmnElement="G06_DataOk">
+        <dc:Bounds x="1420" y="475" width="60" height="60" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1350" y="415" width="200" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R07_Split_di" bpmnElement="R07_Split">
+        <dc:Bounds x="1600" y="460" width="280" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R_DataStop_di" bpmnElement="R_DataStop">
+        <dc:Bounds x="1880" y="600" width="270" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_DataStop_di" bpmnElement="End_DataStop">
+        <dc:Bounds x="2280" y="632" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2220" y="680" width="200" height="35" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R08_Train_di" bpmnElement="R08_Train" isExpanded="true">
+        <dc:Bounds x="1450" y="780" width="1100" height="520" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Train_Start_di" bpmnElement="Train_Start">
+        <dc:Bounds x="1490" y="885" width="30" height="30" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Train_RNN_di" bpmnElement="Train_RNN">
+        <dc:Bounds x="1560" y="850" width="300" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Train_CNN_di" bpmnElement="Train_CNN">
+        <dc:Bounds x="1560" y="1000" width="300" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Train_LR_di" bpmnElement="Train_LR">
+        <dc:Bounds x="1560" y="1150" width="300" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Train_Save_di" bpmnElement="Train_Save">
+        <dc:Bounds x="2020" y="1150" width="280" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Train_End_di" bpmnElement="Train_End">
+        <dc:Bounds x="2450" y="1182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2370" y="1230" width="180" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R09_Tune_di" bpmnElement="R09_Tune">
+        <dc:Bounds x="2660" y="990" width="260" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G07_Dev_di" bpmnElement="G07_Dev">
+        <dc:Bounds x="3040" y="1010" width="60" height="60" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2915" y="935" width="150" height="55" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R10_Analyse_di" bpmnElement="R10_Analyse">
+        <dc:Bounds x="2870" y="1210" width="270" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G08_Retry_di" bpmnElement="G08_Retry">
+        <dc:Bounds x="2740" y="1225" width="60" height="60" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2650" y="1160" width="250" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R11_Pause_di" bpmnElement="R11_Pause">
+        <dc:Bounds x="2890" y="1330" width="260" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Pause_di" bpmnElement="End_Pause">
+        <dc:Bounds x="3230" y="1352" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3150" y="1400" width="150" height="35" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R12_AnalystValidate_di" bpmnElement="R12_AnalystValidate">
+        <dc:Bounds x="120" y="1480" width="260" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G_Validated_di" bpmnElement="G_Validated">
+        <dc:Bounds x="470" y="1500" width="60" height="60" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="410" y="1450" width="180" height="35" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R_Evaluate_di" bpmnElement="R_Evaluate">
+        <dc:Bounds x="650" y="1480" width="320" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G_Auction_di" bpmnElement="G_Auction">
+        <dc:Bounds x="1070" y="1500" width="60" height="60" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1000" y="1450" width="200" height="35" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R14_ApproveDeploy_di" bpmnElement="R14_ApproveDeploy">
+        <dc:Bounds x="1250" y="1480" width="300" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G_DeployApproved_di" bpmnElement="G_DeployApproved">
+        <dc:Bounds x="1650" y="1500" width="60" height="60" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1590" y="1450" width="180" height="35" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R15_Register_di" bpmnElement="R15_Register">
+        <dc:Bounds x="1820" y="1480" width="300" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R16_Deploy_di" bpmnElement="R16_Deploy">
+        <dc:Bounds x="2250" y="1480" width="300" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G_Smoke_di" bpmnElement="G_Smoke">
+        <dc:Bounds x="2680" y="1500" width="60" height="60" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2630" y="1450" width="200" height="35" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R_Success_di" bpmnElement="R_Success">
+        <dc:Bounds x="2850" y="1480" width="280" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_InProd_di" bpmnElement="End_InProd">
+        <dc:Bounds x="3210" y="1512" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3140" y="1560" width="170" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G_KeepMerge_di" bpmnElement="G_KeepMerge">
+        <dc:Bounds x="230" y="1690" width="60" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R_Keep_di" bpmnElement="R_Keep">
+        <dc:Bounds x="120" y="1800" width="280" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R_NotifyKeep_di" bpmnElement="R_NotifyKeep">
+        <dc:Bounds x="500" y="1800" width="280" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Kept_di" bpmnElement="End_Kept">
+        <dc:Bounds x="870" y="1832" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="810" y="1885" width="190" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R_Rollback_di" bpmnElement="R_Rollback">
+        <dc:Bounds x="1840" y="1740" width="280" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G_Rollback_di" bpmnElement="G_Rollback">
+        <dc:Bounds x="2230" y="1760" width="60" height="60" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2170" y="1700" width="200" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R_NotifyRollback_di" bpmnElement="R_NotifyRollback">
+        <dc:Bounds x="2400" y="1740" width="280" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_RolledBack_di" bpmnElement="End_RolledBack">
+        <dc:Bounds x="2780" y="1772" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2710" y="1820" width="200" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R_ManualRecovery_di" bpmnElement="R_ManualRecovery">
+        <dc:Bounds x="2370" y="1920" width="300" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R_NotifyRecovery_di" bpmnElement="R_NotifyRecovery">
+        <dc:Bounds x="2770" y="1920" width="300" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Recovery_di" bpmnElement="End_Recovery">
+        <dc:Bounds x="3170" y="1952" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3090" y="2000" width="220" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="B_Train_di" bpmnElement="B_Train">
+        <dc:Bounds x="2504" y="1284" width="32" height="32" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="B_Evaluate_di" bpmnElement="B_Evaluate">
+        <dc:Bounds x="934" y="1564" width="32" height="32" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="B_Register_di" bpmnElement="B_Register">
+        <dc:Bounds x="2054" y="1564" width="32" height="32" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="B_Deploy_di" bpmnElement="B_Deploy">
+        <dc:Bounds x="2514" y="1564" width="32" height="32" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="B_Rollback_di" bpmnElement="B_Rollback">
+        <dc:Bounds x="2084" y="1824" width="32" height="32" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="AN_Status_di" bpmnElement="AN_Status">
+        <dc:Bounds x="120" y="280" width="630" height="75" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="AN_Trigger_di" bpmnElement="AN_Trigger">
+        <dc:Bounds x="1180" y="280" width="2010" height="75" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="AN_Data_di" bpmnElement="AN_Data">
+        <dc:Bounds x="120" y="420" width="600" height="250" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="AN_Dev_di" bpmnElement="AN_Dev">
+        <dc:Bounds x="120" y="810" width="1190" height="200" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="AN_Independent_di" bpmnElement="AN_Independent">
+        <dc:Bounds x="120" y="1060" width="1190" height="245" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="AN_Train_di" bpmnElement="AN_Train">
+        <dc:Bounds x="2020" y="830" width="450" height="230" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="AN_Auction_di" bpmnElement="AN_Auction">
+        <dc:Bounds x="1030" y="1750" width="700" height="270" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="sf_1_di" bpmnElement="sf_1">
+        <di:waypoint x="156" y="200" />
+        <di:waypoint x="220" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_plan_di" bpmnElement="sf_plan">
+        <di:waypoint x="470" y="200" />
+        <di:waypoint x="560" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_plan_gate_di" bpmnElement="sf_plan_gate">
+        <di:waypoint x="810" y="200" />
+        <di:waypoint x="900" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_plan_no_di" bpmnElement="sf_plan_no">
+        <di:waypoint x="960" y="200" />
+        <di:waypoint x="1390" y="200" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1130" y="170" width="45" height="25" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_plan_end_di" bpmnElement="sf_plan_end">
+        <di:waypoint x="1660" y="200" />
+        <di:waypoint x="1770" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_plan_yes_di" bpmnElement="sf_plan_yes">
+        <di:waypoint x="930" y="230" />
+        <di:waypoint x="930" y="460" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="945" y="335" width="35" height="25" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_7_di" bpmnElement="sf_7">
+        <di:waypoint x="1050" y="505" />
+        <di:waypoint x="1130" y="505" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_8_di" bpmnElement="sf_8">
+        <di:waypoint x="1370" y="505" />
+        <di:waypoint x="1420" y="505" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_data_yes_di" bpmnElement="sf_data_yes">
+        <di:waypoint x="1480" y="505" />
+        <di:waypoint x="1600" y="505" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1520" y="475" width="35" height="25" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_data_no_di" bpmnElement="sf_data_no">
+        <di:waypoint x="1450" y="535" />
+        <di:waypoint x="1450" y="650" />
+        <di:waypoint x="1880" y="650" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1465" y="600" width="45" height="25" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_data_end_di" bpmnElement="sf_data_end">
+        <di:waypoint x="2150" y="650" />
+        <di:waypoint x="2280" y="650" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_11_di" bpmnElement="sf_11">
+        <di:waypoint x="1740" y="550" />
+        <di:waypoint x="1740" y="755" />
+        <di:waypoint x="2000" y="755" />
+        <di:waypoint x="2000" y="780" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_train_rnn_di" bpmnElement="sf_train_rnn">
+        <di:waypoint x="1520" y="900" />
+        <di:waypoint x="1560" y="900" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_train_cnn_di" bpmnElement="sf_train_cnn">
+        <di:waypoint x="1710" y="950" />
+        <di:waypoint x="1710" y="1000" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_train_lr_di" bpmnElement="sf_train_lr">
+        <di:waypoint x="1710" y="1100" />
+        <di:waypoint x="1710" y="1150" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_train_save_di" bpmnElement="sf_train_save">
+        <di:waypoint x="1860" y="1200" />
+        <di:waypoint x="2020" y="1200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_train_end_di" bpmnElement="sf_train_end">
+        <di:waypoint x="2300" y="1200" />
+        <di:waypoint x="2450" y="1200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_tune_di" bpmnElement="sf_tune">
+        <di:waypoint x="2550" y="1040" />
+        <di:waypoint x="2660" y="1040" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_dev_gate_di" bpmnElement="sf_dev_gate">
+        <di:waypoint x="2920" y="1040" />
+        <di:waypoint x="3040" y="1040" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_dev_no_di" bpmnElement="sf_dev_no">
+        <di:waypoint x="3100" y="1040" />
+        <di:waypoint x="3200" y="1040" />
+        <di:waypoint x="3200" y="1255" />
+        <di:waypoint x="3140" y="1255" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3210" y="1130" width="45" height="25" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_dev_yes_di" bpmnElement="sf_dev_yes">
+        <di:waypoint x="3070" y="1010" />
+        <di:waypoint x="3070" y="920" />
+        <di:waypoint x="3280" y="920" />
+        <di:waypoint x="3280" y="1440" />
+        <di:waypoint x="250" y="1440" />
+        <di:waypoint x="250" y="1480" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3150" y="895" width="35" height="25" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_retry_gate_di" bpmnElement="sf_retry_gate">
+        <di:waypoint x="2870" y="1255" />
+        <di:waypoint x="2800" y="1255" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_retry_yes_di" bpmnElement="sf_retry_yes">
+        <di:waypoint x="2740" y="1255" />
+        <di:waypoint x="2600" y="1255" />
+        <di:waypoint x="2600" y="735" />
+        <di:waypoint x="1400" y="735" />
+        <di:waypoint x="1400" y="1040" />
+        <di:waypoint x="1450" y="1040" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2030" y="705" width="260" height="25" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_retry_no_di" bpmnElement="sf_retry_no">
+        <di:waypoint x="2770" y="1285" />
+        <di:waypoint x="2770" y="1370" />
+        <di:waypoint x="2890" y="1370" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2780" y="1340" width="45" height="25" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_pause_end_di" bpmnElement="sf_pause_end">
+        <di:waypoint x="3150" y="1370" />
+        <di:waypoint x="3230" y="1370" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_train_error_di" bpmnElement="sf_train_error">
+        <di:waypoint x="2520" y="1316" />
+        <di:waypoint x="2520" y="1410" />
+        <di:waypoint x="2840" y="1410" />
+        <di:waypoint x="2840" y="1370" />
+        <di:waypoint x="2890" y="1370" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2560" y="1380" width="170" height="25" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_validate_gate_di" bpmnElement="sf_validate_gate">
+        <di:waypoint x="380" y="1530" />
+        <di:waypoint x="470" y="1530" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_validate_yes_di" bpmnElement="sf_validate_yes">
+        <di:waypoint x="530" y="1530" />
+        <di:waypoint x="650" y="1530" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="575" y="1500" width="35" height="25" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_validate_no_di" bpmnElement="sf_validate_no">
+        <di:waypoint x="500" y="1560" />
+        <di:waypoint x="500" y="1660" />
+        <di:waypoint x="260" y="1660" />
+        <di:waypoint x="260" y="1690" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="510" y="1590" width="45" height="25" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_evaluate_gate_di" bpmnElement="sf_evaluate_gate">
+        <di:waypoint x="970" y="1530" />
+        <di:waypoint x="1070" y="1530" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_auction_yes_di" bpmnElement="sf_auction_yes">
+        <di:waypoint x="1130" y="1530" />
+        <di:waypoint x="1250" y="1530" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1180" y="1500" width="35" height="25" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_auction_no_di" bpmnElement="sf_auction_no">
+        <di:waypoint x="1100" y="1560" />
+        <di:waypoint x="1100" y="1680" />
+        <di:waypoint x="330" y="1680" />
+        <di:waypoint x="330" y="1720" />
+        <di:waypoint x="290" y="1720" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1110" y="1610" width="140" height="25" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_release_gate_di" bpmnElement="sf_release_gate">
+        <di:waypoint x="1550" y="1530" />
+        <di:waypoint x="1650" y="1530" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_release_yes_di" bpmnElement="sf_release_yes">
+        <di:waypoint x="1710" y="1530" />
+        <di:waypoint x="1820" y="1530" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1750" y="1500" width="35" height="25" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_release_no_di" bpmnElement="sf_release_no">
+        <di:waypoint x="1680" y="1560" />
+        <di:waypoint x="1680" y="1700" />
+        <di:waypoint x="350" y="1700" />
+        <di:waypoint x="350" y="1760" />
+        <di:waypoint x="200" y="1760" />
+        <di:waypoint x="200" y="1720" />
+        <di:waypoint x="230" y="1720" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1690" y="1610" width="45" height="25" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_register_deploy_di" bpmnElement="sf_register_deploy">
+        <di:waypoint x="2120" y="1530" />
+        <di:waypoint x="2250" y="1530" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_smoke_gate_di" bpmnElement="sf_smoke_gate">
+        <di:waypoint x="2550" y="1530" />
+        <di:waypoint x="2680" y="1530" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_smoke_yes_di" bpmnElement="sf_smoke_yes">
+        <di:waypoint x="2740" y="1530" />
+        <di:waypoint x="2850" y="1530" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2790" y="1500" width="35" height="25" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_success_end_di" bpmnElement="sf_success_end">
+        <di:waypoint x="3130" y="1530" />
+        <di:waypoint x="3210" y="1530" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_kept_di" bpmnElement="sf_kept">
+        <di:waypoint x="260" y="1750" />
+        <di:waypoint x="260" y="1800" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_notify_keep_di" bpmnElement="sf_notify_keep">
+        <di:waypoint x="400" y="1850" />
+        <di:waypoint x="500" y="1850" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_keep_end_di" bpmnElement="sf_keep_end">
+        <di:waypoint x="780" y="1850" />
+        <di:waypoint x="870" y="1850" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_eval_error_di" bpmnElement="sf_eval_error">
+        <di:waypoint x="950" y="1596" />
+        <di:waypoint x="950" y="1640" />
+        <di:waypoint x="380" y="1640" />
+        <di:waypoint x="380" y="1720" />
+        <di:waypoint x="290" y="1720" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_register_error_di" bpmnElement="sf_register_error">
+        <di:waypoint x="2070" y="1596" />
+        <di:waypoint x="2070" y="1620" />
+        <di:waypoint x="180" y="1620" />
+        <di:waypoint x="180" y="1720" />
+        <di:waypoint x="230" y="1720" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_smoke_no_di" bpmnElement="sf_smoke_no">
+        <di:waypoint x="2710" y="1560" />
+        <di:waypoint x="2710" y="1640" />
+        <di:waypoint x="1980" y="1640" />
+        <di:waypoint x="1980" y="1740" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2720" y="1590" width="45" height="25" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_deploy_error_di" bpmnElement="sf_deploy_error">
+        <di:waypoint x="2530" y="1596" />
+        <di:waypoint x="2530" y="1640" />
+        <di:waypoint x="1980" y="1640" />
+        <di:waypoint x="1980" y="1740" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_rollback_gate_di" bpmnElement="sf_rollback_gate">
+        <di:waypoint x="2120" y="1790" />
+        <di:waypoint x="2230" y="1790" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_rollback_yes_di" bpmnElement="sf_rollback_yes">
+        <di:waypoint x="2290" y="1790" />
+        <di:waypoint x="2400" y="1790" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2330" y="1760" width="35" height="25" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_rollback_end_di" bpmnElement="sf_rollback_end">
+        <di:waypoint x="2680" y="1790" />
+        <di:waypoint x="2780" y="1790" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_rollback_no_di" bpmnElement="sf_rollback_no">
+        <di:waypoint x="2260" y="1820" />
+        <di:waypoint x="2260" y="1970" />
+        <di:waypoint x="2370" y="1970" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2270" y="1880" width="45" height="25" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_rollback_error_di" bpmnElement="sf_rollback_error">
+        <di:waypoint x="2100" y="1856" />
+        <di:waypoint x="2100" y="1970" />
+        <di:waypoint x="2370" y="1970" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2110" y="1900" width="145" height="25" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_recovery_notify_di" bpmnElement="sf_recovery_notify">
+        <di:waypoint x="2670" y="1970" />
+        <di:waypoint x="2770" y="1970" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_recovery_end_di" bpmnElement="sf_recovery_end">
+        <di:waypoint x="3070" y="1970" />
+        <di:waypoint x="3170" y="1970" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

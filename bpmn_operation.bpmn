@@ -1,0 +1,515 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_Process_Operation" targetNamespace="https://github.com/pudoff/SpamClickbaitClassification/bpmn" exporter="bpmn-js (https://demo.bpmn.io)" exporterVersion="18.31.0">
+  <bpmn:dataStore id="DS_LOG" name="Журнал результатов и версий" />
+  <bpmn:dataStore id="DS_LABELS" name="Отзывы для проверки разметки" />
+  <bpmn:process id="Process_Client" name="Telegram-бот и ASR · проект интеграции" isExecutable="false">
+    <bpmn:documentation>Схема эксплуатации: реализован текстовый FastAPI с ансамблем rnn-cnn-lr@ensemble-20261018. Telegram, ASR, аудит, отзывы, мониторинг и автоматизация переобучения — проект интеграции. BPMN описывает процесс и не является развёрнутым исполняемым workflow.</bpmn:documentation>
+    <bpmn:startEvent id="Start_Incoming" name="Новое голосовое">
+      <bpmn:documentation>Проект Telegram-интеграции: пользователь отправляет голосовое сообщение боту.</bpmn:documentation>
+      <bpmn:outgoing>sf_1</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="Message_Start_Incoming" />
+    </bpmn:startEvent>
+    <bpmn:receiveTask id="T01_Receive" name="Принять голосовое&#10;msg_id, время, аудио">
+      <bpmn:documentation>Приём и проверка ограничений голосового сообщения. Работа со звонками и on-device инференс в текущую архитектуру не входят.</bpmn:documentation>
+      <bpmn:incoming>sf_1</bpmn:incoming>
+      <bpmn:outgoing>sf_2</bpmn:outgoing>
+    </bpmn:receiveTask>
+    <bpmn:serviceTask id="T02_ASR" name="Преобразовать речь в текст&#10;VAD + GigaAM-v3&#10;[проект интеграции]">
+      <bpmn:documentation>Проектный ASR-конвейер: Silero VAD и GigaAM-v3. В текущем Compose подключён только текстовый inference-api. Качество на ASR-транскриптах отдельно не измерено.</bpmn:documentation>
+      <bpmn:incoming>sf_2</bpmn:incoming>
+      <bpmn:outgoing>sf_3</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sendTask id="T_Request" name="Вызвать POST /predict&#10;text + необязательный&#10;threshold">
+      <bpmn:documentation>Бот вызывает серверный FastAPI. Обмен Telegram/ASR/API показан как проект; сам POST /predict реализован.</bpmn:documentation>
+      <bpmn:incoming>sf_3</bpmn:incoming>
+      <bpmn:outgoing>sf_wait</bpmn:outgoing>
+    </bpmn:sendTask>
+    <bpmn:intermediateCatchEvent id="Catch_Result" name="Получить ответ API">
+      <bpmn:documentation>Ответ: результат классификации, uncertain или ошибка проверки.</bpmn:documentation>
+      <bpmn:incoming>sf_wait</bpmn:incoming>
+      <bpmn:outgoing>sf_display</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="Message_Catch_Result" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:sendTask id="T_Display" name="Показать результат&#10;и расшифровку&#10;[проект бота]">
+      <bpmn:documentation>Показать normal / spam / clickbait / uncertain или причину ошибки. API не скрывает сообщения и не управляет звуком на телефоне.</bpmn:documentation>
+      <bpmn:incoming>sf_display</bpmn:incoming>
+      <bpmn:outgoing>sf_client_end</bpmn:outgoing>
+    </bpmn:sendTask>
+    <bpmn:endEvent id="End_Wait" name="Ответ отправлен">
+      <bpmn:documentation>Следующее сообщение начинает новый экземпляр процесса.</bpmn:documentation>
+      <bpmn:incoming>sf_client_end</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="sf_1" name="" sourceRef="Start_Incoming" targetRef="T01_Receive" />
+    <bpmn:sequenceFlow id="sf_2" name="" sourceRef="T01_Receive" targetRef="T02_ASR" />
+    <bpmn:sequenceFlow id="sf_3" name="" sourceRef="T02_ASR" targetRef="T_Request" />
+    <bpmn:sequenceFlow id="sf_wait" name="Ожидать ответ" sourceRef="T_Request" targetRef="Catch_Result" />
+    <bpmn:sequenceFlow id="sf_display" name="" sourceRef="Catch_Result" targetRef="T_Display" />
+    <bpmn:sequenceFlow id="sf_client_end" name="" sourceRef="T_Display" targetRef="End_Wait" />
+  </bpmn:process>
+  <bpmn:process id="Process_API" name="FastAPI · реализованный текстовый инференс ансамбля" isExecutable="false">
+    <bpmn:documentation>Схема эксплуатации: реализован текстовый FastAPI с ансамблем rnn-cnn-lr@ensemble-20261018. Telegram, ASR, аудит, отзывы, мониторинг и автоматизация переобучения — проект интеграции. BPMN описывает процесс и не является развёрнутым исполняемым workflow.</bpmn:documentation>
+    <bpmn:startEvent id="Start_Predict" name="Запрос /predict">
+      <bpmn:documentation>Вход в реализованный текстовый сервис.</bpmn:documentation>
+      <bpmn:outgoing>sf_api_start</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="Message_Start_Predict" />
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="T_Validate" name="Проверить JSON&#10;и готовность модели">
+      <bpmn:documentation>Сначала Pydantic проверяет тело запроса; затем get_model проверяет загруженную модель. Некорректный запрос даёт 422, отсутствие модели — 503.</bpmn:documentation>
+      <bpmn:incoming>sf_api_start</bpmn:incoming>
+      <bpmn:outgoing>sf_api_ready</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="G_Ready" name="Можно&#10;классифицировать?" default="sf_api_invalid">
+      <bpmn:documentation>И тело запроса, и модель должны быть пригодны для инференса.</bpmn:documentation>
+      <bpmn:incoming>sf_api_ready</bpmn:incoming>
+      <bpmn:outgoing>sf_api_clean</bpmn:outgoing>
+      <bpmn:outgoing>sf_api_invalid</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="T_Normalize" name="Очистить текст&#10;по версии нормализации&#10;из метаданных модели">
+      <bpmn:documentation>LoadedModel.cleaner выбирает normalizer_of(meta). Текущий ансамбль использует notebook-clean-text-v1; clean-text-v2 предназначена для новых LR. Словари и TF-IDF в запросе не обучаются.</bpmn:documentation>
+      <bpmn:incoming>sf_api_clean</bpmn:incoming>
+      <bpmn:outgoing>sf_model_in</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="T_Error" name="Сформировать ошибку&#10;422: неверный запрос&#10;503: модель недоступна">
+      <bpmn:documentation>Не выдавать ошибку сервиса за normal или uncertain. При повреждённом ансамбле нет молчаливого переключения на LR.</bpmn:documentation>
+      <bpmn:incoming>sf_api_invalid</bpmn:incoming>
+      <bpmn:outgoing>sf_error_response</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:subProcess id="T03_Model" name="Ансамбль RNN + char-CNN + LR">
+      <bpmn:documentation>Развёрнутый подпроцесс соответствует EnsemblePredictor.component_probabilities: компоненты вызываются последовательно в одном процессе CPU. Каждый получает один и тот же очищенный текст и собственные признаки, а не предсказание предыдущей модели. Стрелки задают порядок выполнения, а не каскад моделей. Затем blend суммирует их вероятности; это не три отдельных сетевых сервиса. Проверки SHA-256, формата, порядка классов и версии sklearn выполняются при загрузке комплекта.</bpmn:documentation>
+      <bpmn:incoming>sf_model_in</bpmn:incoming>
+      <bpmn:outgoing>sf_model_out</bpmn:outgoing>
+      <bpmn:startEvent id="Start_Ensemble" name="">
+        <bpmn:documentation>Вход — очищенный текст, фиксированные словари и признаки.</bpmn:documentation>
+        <bpmn:outgoing>sf_rnn</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:serviceTask id="T_RNN" name="RNN: BiGRU + attention&#10;+ char-CNN и 12 признаков&#10;→ P_RNN(0, 1, 2)">
+        <bpmn:documentation>SpamClickbaitNet: word embedding 128 → двунаправленная GRU с hidden=128 → attention; дополнительная символьная ветвь CNN и 12 поверхностных признаков. Выход softmax по трём классам. eval() и inference_mode().</bpmn:documentation>
+        <bpmn:incoming>sf_rnn</bpmn:incoming>
+        <bpmn:outgoing>sf_cnn</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="T_CNN" name="Отдельная char-CNN&#10;+ 12 признаков текста&#10;→ P_CNN(0, 1, 2)">
+        <bpmn:documentation>CharCNN: символьные embedding, три Conv1d, max pooling и полносвязная голова. Это самостоятельный компонент ансамбля, кроме символьной ветви внутри RNN.</bpmn:documentation>
+        <bpmn:incoming>sf_cnn</bpmn:incoming>
+        <bpmn:outgoing>sf_lr</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="T_LR" name="TF-IDF (слова + символы)&#10;LogisticRegression, C=1&#10;→ P_LR(0, 1, 2)">
+        <bpmn:documentation>Сохранённая лучшая LR из первого ноутбука. Используются готовые TF-IDF-преобразования и predict_proba; обучение при запросе не происходит.</bpmn:documentation>
+        <bpmn:incoming>sf_lr</bpmn:incoming>
+        <bpmn:outgoing>sf_blend</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="T_Blend" name="Объединить вероятности&#10;P = 0,5·P_RNN + 0,2·P_CNN&#10;+ 0,3·P_LR">
+        <bpmn:documentation>Для rnn-cnn-lr@ensemble-20261018 веса [0.5, 0.2, 0.3] выбраны по dev macro-F1. blend нормирует итоговое распределение. Числа описывают текущий manifest.json; для другой версии берутся её веса.</bpmn:documentation>
+        <bpmn:incoming>sf_blend</bpmn:incoming>
+        <bpmn:outgoing>sf_ensemble_end</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:endEvent id="End_Ensemble" name="Вероятности готовы">
+        <bpmn:documentation>Классы идут в порядке [0 normal, 1 spam, 2 clickbait].</bpmn:documentation>
+        <bpmn:incoming>sf_ensemble_end</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="sf_rnn" name="" sourceRef="Start_Ensemble" targetRef="T_RNN" />
+      <bpmn:sequenceFlow id="sf_cnn" name="" sourceRef="T_RNN" targetRef="T_CNN" />
+      <bpmn:sequenceFlow id="sf_lr" name="" sourceRef="T_CNN" targetRef="T_LR" />
+      <bpmn:sequenceFlow id="sf_blend" name="" sourceRef="T_LR" targetRef="T_Blend" />
+      <bpmn:sequenceFlow id="sf_ensemble_end" name="" sourceRef="T_Blend" targetRef="End_Ensemble" />
+    </bpmn:subProcess>
+    <bpmn:exclusiveGateway id="G01_Conf" name="max P ≥&#10;порог?" default="sf_uncertain">
+      <bpmn:documentation>decide выбирает класс с максимальной вероятностью. Если threshold явно передан клиентом, он заменяет стандартный порог для этого запроса.</bpmn:documentation>
+      <bpmn:incoming>sf_model_out</bpmn:incoming>
+      <bpmn:outgoing>sf_classified</bpmn:outgoing>
+      <bpmn:outgoing>sf_uncertain</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="T_Classified" name="status = classified&#10;label = normal / spam / clickbait&#10;по максимальной вероятности">
+      <bpmn:documentation>Условие confidence &gt;= threshold. Метка и label_id соответствуют app/labels.py.</bpmn:documentation>
+      <bpmn:incoming>sf_classified</bpmn:incoming>
+      <bpmn:outgoing>sf_class_merge</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="T_Uncertain" name="status = uncertain&#10;label = null&#10;reason = low_confidence">
+      <bpmn:documentation>Низкая уверенность не превращается в normal. Отдельного порога 0.80 для clickbait и экспериментального коридора проверки в API нет.</bpmn:documentation>
+      <bpmn:incoming>sf_uncertain</bpmn:incoming>
+      <bpmn:outgoing>sf_uncertain_merge</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="G_Result" name="">
+      <bpmn:documentation>Объединение альтернатив classified и uncertain.</bpmn:documentation>
+      <bpmn:incoming>sf_class_merge</bpmn:incoming>
+      <bpmn:incoming>sf_uncertain_merge</bpmn:incoming>
+      <bpmn:outgoing>sf_response</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sendTask id="T_Response" name="Вернуть JSON&#10;scores, confidence, threshold,&#10;status, label, model_version">
+      <bpmn:documentation>При успешном запросе возвращается PredictResponse. Для 422/503 — предусмотренный контрактом ответ с ошибкой. Публикация события аудита в нижний контур — только проект.</bpmn:documentation>
+      <bpmn:incoming>sf_response</bpmn:incoming>
+      <bpmn:incoming>sf_error_response</bpmn:incoming>
+      <bpmn:outgoing>sf_api_end</bpmn:outgoing>
+    </bpmn:sendTask>
+    <bpmn:endEvent id="End_Predict" name="Запрос завершён">
+      <bpmn:documentation>Завершение одного запроса FastAPI.</bpmn:documentation>
+      <bpmn:incoming>sf_api_end</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="sf_api_start" name="" sourceRef="Start_Predict" targetRef="T_Validate" />
+    <bpmn:sequenceFlow id="sf_api_ready" name="" sourceRef="T_Validate" targetRef="G_Ready" />
+    <bpmn:sequenceFlow id="sf_api_clean" name="Да" sourceRef="G_Ready" targetRef="T_Normalize">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">request_valid and model_loaded</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="sf_api_invalid" name="Нет" sourceRef="G_Ready" targetRef="T_Error" />
+    <bpmn:sequenceFlow id="sf_model_in" name="" sourceRef="T_Normalize" targetRef="T03_Model" />
+    <bpmn:sequenceFlow id="sf_error_response" name="" sourceRef="T_Error" targetRef="T_Response" />
+    <bpmn:sequenceFlow id="sf_model_out" name="" sourceRef="T03_Model" targetRef="G01_Conf" />
+    <bpmn:sequenceFlow id="sf_classified" name="Да" sourceRef="G01_Conf" targetRef="T_Classified">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">confidence &gt;= threshold</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="sf_uncertain" name="Нет" sourceRef="G01_Conf" targetRef="T_Uncertain" />
+    <bpmn:sequenceFlow id="sf_class_merge" name="" sourceRef="T_Classified" targetRef="G_Result" />
+    <bpmn:sequenceFlow id="sf_uncertain_merge" name="" sourceRef="T_Uncertain" targetRef="G_Result" />
+    <bpmn:sequenceFlow id="sf_response" name="" sourceRef="G_Result" targetRef="T_Response" />
+    <bpmn:sequenceFlow id="sf_api_end" name="" sourceRef="T_Response" targetRef="End_Predict" />
+  </bpmn:process>
+  <bpmn:process id="Process_User" name="Пользователь · проект интерфейса и обратной связи" isExecutable="false">
+    <bpmn:documentation>Схема эксплуатации: реализован текстовый FastAPI с ансамблем rnn-cnn-lr@ensemble-20261018. Telegram, ASR, аудит, отзывы, мониторинг и автоматизация переобучения — проект интеграции. BPMN описывает процесс и не является развёрнутым исполняемым workflow.</bpmn:documentation>
+    <bpmn:startEvent id="Start_User" name="Результат получен">
+      <bpmn:documentation>Проект пользовательского интерфейса Telegram.</bpmn:documentation>
+      <bpmn:outgoing>sf_user_start</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="Message_Start_User" />
+    </bpmn:startEvent>
+    <bpmn:userTask id="T07_UserDecision" name="Просмотреть результат;&#10;при uncertain&#10;решить вручную">
+      <bpmn:documentation>В проектируемом боте человек принимает решение при недостаточной уверенности. Автоматического скрытия обычных сообщений нет.</bpmn:documentation>
+      <bpmn:incoming>sf_user_start</bpmn:incoming>
+      <bpmn:outgoing>sf_13</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sendTask id="T08_Feedback" name="При желании отправить&#10;исправленную метку&#10;с согласия пользователя">
+      <bpmn:documentation>Обратная связь добровольна. Пользовательская метка сначала является отзывом и должна пройти проверку перед оценкой качества или обучением.</bpmn:documentation>
+      <bpmn:incoming>sf_13</bpmn:incoming>
+      <bpmn:outgoing>sf_user_end</bpmn:outgoing>
+    </bpmn:sendTask>
+    <bpmn:endEvent id="End_User" name="Просмотр завершён">
+      <bpmn:documentation>Отсутствие отзыва не мешает получить ответ.</bpmn:documentation>
+      <bpmn:incoming>sf_user_end</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="sf_user_start" name="" sourceRef="Start_User" targetRef="T07_UserDecision" />
+    <bpmn:sequenceFlow id="sf_13" name="" sourceRef="T07_UserDecision" targetRef="T08_Feedback" />
+    <bpmn:sequenceFlow id="sf_user_end" name="" sourceRef="T08_Feedback" targetRef="End_User" />
+  </bpmn:process>
+  <bpmn:collaboration id="Collaboration_Process_Operation">
+    <bpmn:participant id="Pool_Client" name="Telegram-бот и ASR · проект интеграции" processRef="Process_Client" />
+    <bpmn:participant id="Pool_API" name="FastAPI · реализованный текстовый инференс ансамбля" processRef="Process_API" />
+    <bpmn:participant id="Pool_User" name="Администратор системы" processRef="Process_User" />
+    <bpmn:messageFlow id="mf_request" name="Текст для классификации" sourceRef="T_Request" targetRef="Start_Predict" />
+    <bpmn:messageFlow id="mf_response" name="JSON / ошибка" sourceRef="T_Response" targetRef="Catch_Result" />
+    <bpmn:messageFlow id="mf_user" name="Результат пользователю&#10;[проект]" sourceRef="T_Display" targetRef="Start_User" />
+    <bpmn:textAnnotation id="AN_HITL">
+      <bpmn:text>ПРОЕКТ: пользователь видит результат и может исправить метку. Отзывы требуют проверки.
+Сырой текст и голосовые не сохраняются автоматически. Использование данных — только по правилам согласия и удаления.
+Качество текущего ансамбля измерено на текстовом корпусе; оценка на голосовых / ASR пока отдельно не выполнена.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="AN_Model">
+      <bpmn:text>Веса 0,5 / 0,2 / 0,3 выбраны на валидации.
+Каждая модель получает один и тот же текст.
+Вызовы последовательные; прогнозы независимы.
+Стрелки — порядок вызовов, а не каскад моделей.
+Все три компонента заморожены, инференс на CPU.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:textAnnotation id="AN_Calib">
+      <bpmn:text>Стандартные пороги: spam — 0,65; normal/clickbait — 0,55.
+Явный threshold клиента заменяет порог для запроса.
+Пороги — настройки политики; вероятности не откалиброваны.</bpmn:text>
+    </bpmn:textAnnotation>
+  </bpmn:collaboration>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_Process_Operation">
+    <bpmndi:BPMNPlane id="BPMNPlane_Process_Operation" bpmnElement="Collaboration_Process_Operation">
+      <bpmndi:BPMNShape id="Pool_Client_di" bpmnElement="Pool_Client" isHorizontal="true">
+        <dc:Bounds x="160" y="60" width="3260" height="250" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_Incoming_di" bpmnElement="Start_Incoming">
+        <dc:Bounds x="240" y="177" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="219" y="220" width="88" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T01_Receive_di" bpmnElement="T01_Receive">
+        <dc:Bounds x="330" y="150" width="210" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T02_ASR_di" bpmnElement="T02_ASR">
+        <dc:Bounds x="610" y="150" width="240" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_Request_di" bpmnElement="T_Request">
+        <dc:Bounds x="920" y="150" width="240" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Catch_Result_di" bpmnElement="Catch_Result">
+        <dc:Bounds x="2852" y="177" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2825" y="230" width="100" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_Display_di" bpmnElement="T_Display">
+        <dc:Bounds x="2970" y="150" width="240" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Wait_di" bpmnElement="End_Wait">
+        <dc:Bounds x="3290" y="177" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3267" y="220" width="87" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="sf_1_di" bpmnElement="sf_1">
+        <di:waypoint x="276" y="195" />
+        <di:waypoint x="330" y="195" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_2_di" bpmnElement="sf_2">
+        <di:waypoint x="540" y="195" />
+        <di:waypoint x="610" y="195" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_3_di" bpmnElement="sf_3">
+        <di:waypoint x="850" y="195" />
+        <di:waypoint x="920" y="195" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_wait_di" bpmnElement="sf_wait">
+        <di:waypoint x="1160" y="195" />
+        <di:waypoint x="2852" y="195" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1842" y="210" width="76" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_display_di" bpmnElement="sf_display">
+        <di:waypoint x="2888" y="195" />
+        <di:waypoint x="2970" y="195" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_client_end_di" bpmnElement="sf_client_end">
+        <di:waypoint x="3210" y="195" />
+        <di:waypoint x="3290" y="195" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Pool_API_di" bpmnElement="Pool_API" isHorizontal="true">
+        <dc:Bounds x="160" y="365" width="3260" height="820" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_Predict_di" bpmnElement="Start_Predict">
+        <dc:Bounds x="240" y="642" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="238" y="690" width="76" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_Validate_di" bpmnElement="T_Validate">
+        <dc:Bounds x="350" y="615" width="220" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G_Ready_di" bpmnElement="G_Ready" isMarkerVisible="true">
+        <dc:Bounds x="620" y="630" width="60" height="60" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="599" y="570" width="103" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_Normalize_di" bpmnElement="T_Normalize">
+        <dc:Bounds x="750" y="615" width="230" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_Error_di" bpmnElement="T_Error">
+        <dc:Bounds x="735" y="1005" width="230" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T03_Model_di" bpmnElement="T03_Model" isExpanded="true">
+        <dc:Bounds x="1050" y="410" width="1050" height="580" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_Ensemble_di" bpmnElement="Start_Ensemble">
+        <dc:Bounds x="1090" y="505" width="30" height="30" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_RNN_di" bpmnElement="T_RNN">
+        <dc:Bounds x="1170" y="465" width="280" height="110" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_CNN_di" bpmnElement="T_CNN">
+        <dc:Bounds x="1170" y="635" width="280" height="110" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_LR_di" bpmnElement="T_LR">
+        <dc:Bounds x="1170" y="805" width="280" height="110" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_Blend_di" bpmnElement="T_Blend">
+        <dc:Bounds x="1570" y="805" width="300" height="110" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Ensemble_di" bpmnElement="End_Ensemble">
+        <dc:Bounds x="1960" y="842" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1918" y="895" width="104" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="AN_Model_di" bpmnElement="AN_Model">
+        <dc:Bounds x="1570" y="475" width="454.9140274085343" height="86" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="sf_rnn_di" bpmnElement="sf_rnn">
+        <di:waypoint x="1120" y="520" />
+        <di:waypoint x="1170" y="520" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_cnn_di" bpmnElement="sf_cnn">
+        <di:waypoint x="1310" y="575" />
+        <di:waypoint x="1310" y="635" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_lr_di" bpmnElement="sf_lr">
+        <di:waypoint x="1310" y="745" />
+        <di:waypoint x="1310" y="805" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_blend_di" bpmnElement="sf_blend">
+        <di:waypoint x="1450" y="860" />
+        <di:waypoint x="1570" y="860" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_ensemble_end_di" bpmnElement="sf_ensemble_end">
+        <di:waypoint x="1870" y="860" />
+        <di:waypoint x="1960" y="860" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="G01_Conf_di" bpmnElement="G01_Conf" isMarkerVisible="true">
+        <dc:Bounds x="2190" y="630" width="60" height="60" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2149" y="626" width="41" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_Classified_di" bpmnElement="T_Classified">
+        <dc:Bounds x="2350" y="535" width="270" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_Uncertain_di" bpmnElement="T_Uncertain">
+        <dc:Bounds x="2350" y="765" width="270" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G_Result_di" bpmnElement="G_Result" isMarkerVisible="true">
+        <dc:Bounds x="2730" y="630" width="60" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_Response_di" bpmnElement="T_Response">
+        <dc:Bounds x="2900" y="615" width="230" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Predict_di" bpmnElement="End_Predict">
+        <dc:Bounds x="3260" y="642" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3235" y="690" width="90" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="AN_Calib_di" bpmnElement="AN_Calib">
+        <dc:Bounds x="2250" y="400" width="620" height="115" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="sf_api_start_di" bpmnElement="sf_api_start">
+        <di:waypoint x="276" y="660" />
+        <di:waypoint x="350" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_api_ready_di" bpmnElement="sf_api_ready">
+        <di:waypoint x="570" y="660" />
+        <di:waypoint x="620" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_api_clean_di" bpmnElement="sf_api_clean">
+        <di:waypoint x="680" y="660" />
+        <di:waypoint x="750" y="660" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="706" y="635" width="14" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_api_invalid_di" bpmnElement="sf_api_invalid">
+        <di:waypoint x="650" y="690" />
+        <di:waypoint x="650" y="1050" />
+        <di:waypoint x="735" y="1050" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="676" y="874" width="19" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_model_in_di" bpmnElement="sf_model_in">
+        <di:waypoint x="980" y="660" />
+        <di:waypoint x="1050" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_model_out_di" bpmnElement="sf_model_out">
+        <di:waypoint x="2100" y="660" />
+        <di:waypoint x="2190" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_classified_di" bpmnElement="sf_classified">
+        <di:waypoint x="2220" y="630" />
+        <di:waypoint x="2220" y="585" />
+        <di:waypoint x="2350" y="585" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2273" y="597" width="14" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_uncertain_di" bpmnElement="sf_uncertain">
+        <di:waypoint x="2220" y="690" />
+        <di:waypoint x="2220" y="810" />
+        <di:waypoint x="2350" y="810" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2241" y="745" width="19" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_class_merge_di" bpmnElement="sf_class_merge">
+        <di:waypoint x="2620" y="585" />
+        <di:waypoint x="2760" y="585" />
+        <di:waypoint x="2760" y="630" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_uncertain_merge_di" bpmnElement="sf_uncertain_merge">
+        <di:waypoint x="2620" y="810" />
+        <di:waypoint x="2760" y="810" />
+        <di:waypoint x="2760" y="690" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_response_di" bpmnElement="sf_response">
+        <di:waypoint x="2790" y="660" />
+        <di:waypoint x="2900" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_error_response_di" bpmnElement="sf_error_response">
+        <di:waypoint x="965" y="1050" />
+        <di:waypoint x="3015" y="1050" />
+        <di:waypoint x="3015" y="705" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_api_end_di" bpmnElement="sf_api_end">
+        <di:waypoint x="3130" y="660" />
+        <di:waypoint x="3260" y="660" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Pool_User_di" bpmnElement="Pool_User" isHorizontal="true">
+        <dc:Bounds x="160" y="1180" width="3260" height="250" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_User_di" bpmnElement="Start_User">
+        <dc:Bounds x="3072" y="1215" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2933" y="1215" width="95" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T07_UserDecision_di" bpmnElement="T07_UserDecision">
+        <dc:Bounds x="2970" y="1290" width="240" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T08_Feedback_di" bpmnElement="T08_Feedback">
+        <dc:Bounds x="2610" y="1290" width="250" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_User_di" bpmnElement="End_User">
+        <dc:Bounds x="2470" y="1317" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2453" y="1365" width="104" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="sf_user_start_di" bpmnElement="sf_user_start">
+        <di:waypoint x="3090" y="1251" />
+        <di:waypoint x="3090" y="1290" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_13_di" bpmnElement="sf_13">
+        <di:waypoint x="2970" y="1335" />
+        <di:waypoint x="2860" y="1335" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="sf_user_end_di" bpmnElement="sf_user_end">
+        <di:waypoint x="2610" y="1335" />
+        <di:waypoint x="2506" y="1335" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="mf_request_di" bpmnElement="mf_request">
+        <di:waypoint x="1040" y="240" />
+        <di:waypoint x="1040" y="340" />
+        <di:waypoint x="258" y="340" />
+        <di:waypoint x="258" y="642" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="526" y="315" width="133" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="mf_response_di" bpmnElement="mf_response">
+        <di:waypoint x="3015" y="615" />
+        <di:waypoint x="3015" y="350" />
+        <di:waypoint x="2870" y="350" />
+        <di:waypoint x="2870" y="213" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2916" y="320" width="78" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="mf_user_di" bpmnElement="mf_user">
+        <di:waypoint x="3090" y="240" />
+        <di:waypoint x="3090" y="280" />
+        <di:waypoint x="3390" y="280" />
+        <di:waypoint x="3390" y="1155" />
+        <di:waypoint x="3090" y="1155" />
+        <di:waypoint x="3090" y="1215" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3220" y="940" width="126" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="AN_HITL_di" bpmnElement="AN_HITL">
+        <dc:Bounds x="260" y="1210" width="1860" height="145" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
