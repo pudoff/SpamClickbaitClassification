@@ -1,25 +1,37 @@
+"""Обучение отдельной TF-IDF + LogisticRegression (tfidf-logreg) на Datasets/df.csv.
+
+Сохраняет <out>/model.joblib и <out>/model_meta.json (нормализация — в config.normalizer, по умолчанию
+clean-text-v2). С --test-sample ещё <out>/test_sample.pkl для Datasets/outputs/test_model.py.
+Это эксперименты и запасной вариант сервиса; рабочий ансамбль rnn-cnn-lr выпускается
+скриптом training/export_ensemble.py.
+
+    python -m training.train --data=../Datasets/df.csv --out=models --config=exp4
+"""
+
 import argparse
 import json
 import logging
+import pickle
 import time
-from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 
 import joblib
 import numpy as np
 import sklearn
-from app.model import LABELS, sha256_of
-from app.text import clean_text
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import FeatureUnion, Pipeline
 
+from app.artifacts import sha256_of
+from app.logs import configure_logging
+from app.text import NORMALIZER_V2, NORMALIZERS, get_normalizer
+from training.data import deduplicate, load_fixed_csv
+from training.metrics import evaluate
+
 logger = logging.getLogger("train")
 
-VALID_LABELS = set(LABELS)
 RANDOM_STATE = 42
 TEST_SIZE = 0.2
 
@@ -62,48 +74,6 @@ CONFIGS = {
     "exp4": EXP4_CONFIG,
     "exp5": EXP5_CONFIG,
 }
-
-
-def load_fixed_csv(path: Path) -> tuple[list[str], list[int], Counter]:
-    """Построчный разбор df.csv, как в ноутбуке: метка — после последней ',' или ';'.
-
-    Строки без разделителя или с нечисловой меткой пропускаются — в т.ч. маркеры
-    merge-конфликта (<<<<<<< / ======= / >>>>>>>), оставшиеся в df.csv.
-    """
-    texts, labels, bad = [], [], Counter()
-    with path.open(encoding="utf-8-sig") as f:
-        next(f)  # заголовок
-        for raw in f:
-            line = raw.rstrip("\n")
-            if not line.strip():
-                continue
-            pos = max(line.rfind(","), line.rfind(";"))
-            if pos == -1:
-                bad["нет разделителя"] += 1
-                continue
-            try:
-                label = int(line[pos + 1 :].strip().strip('"'))
-            except ValueError:
-                bad["метка не число"] += 1
-                continue
-            if label not in VALID_LABELS:
-                bad["метка вне {0,1,2}"] += 1
-                continue
-            texts.append(line[:pos].strip().strip('"'))
-            labels.append(label)
-    return texts, labels, bad
-
-
-def deduplicate(texts: list[str], labels: list[int]) -> tuple[list[str], list[int], dict]:
-    """Удаляет полные дубли и тексты с противоречивыми метками (ячейка очистки ноутбука)."""
-    pairs = list(dict.fromkeys(zip(texts, labels, strict=True)))
-    label_sets: dict[str, set[int]] = {}
-    for text, label in pairs:
-        label_sets.setdefault(text, set()).add(label)
-    conflicting = {t for t, s in label_sets.items() if len(s) > 1}
-    kept = [(t, lb) for t, lb in pairs if t not in conflicting]
-    stats = {"duplicates_removed": len(texts) - len(pairs), "conflicting_texts_removed": len(conflicting)}
-    return [t for t, _ in kept], [lb for _, lb in kept], stats
 
 
 def build_pipeline(cfg: dict, y_train: np.ndarray) -> Pipeline:
@@ -156,23 +126,6 @@ def build_pipeline(cfg: dict, y_train: np.ndarray) -> Pipeline:
     )
 
 
-def evaluate(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
-    labels = sorted(LABELS)
-    f1 = f1_score(y_true, y_pred, average=None, labels=labels)
-    precision = precision_score(y_true, y_pred, average=None, labels=labels, zero_division=0)
-    recall = recall_score(y_true, y_pred, average=None, labels=labels, zero_division=0)
-    metrics = {
-        "f1_macro": f1_score(y_true, y_pred, average="macro"),
-        "f1_weighted": f1_score(y_true, y_pred, average="weighted"),
-        "accuracy": accuracy_score(y_true, y_pred),
-    }
-    for idx, name in LABELS.items():
-        metrics[f"f1_{name}"] = f1[idx]
-        metrics[f"precision_{name}"] = precision[idx]
-        metrics[f"recall_{name}"] = recall[idx]
-    return {k: round(float(v), 4) for k, v in metrics.items()}
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--data", type=Path, default=Path("../Datasets/df.csv"))
@@ -180,9 +133,15 @@ def main() -> None:
     parser.add_argument("--config", choices=sorted(CONFIGS), default="exp4")
     parser.add_argument("--version", default="1", help="версия модели: tfidf-logreg@<version>")
     parser.add_argument("--max-rows", type=int, default=None, help="подвыборка для быстрого прогона")
+    parser.add_argument(
+        "--normalizer", choices=sorted(NORMALIZERS), default=NORMALIZER_V2, help="нормализация текста (app/text.py)"
+    )
+    parser.add_argument(
+        "--test-sample", action="store_true", help="сохранить test_sample.pkl для Datasets/outputs/test_model.py"
+    )
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    configure_logging()
 
     texts, labels, bad = load_fixed_csv(args.data)
     logger.info("прочитано %d записей из %s; пропущено строк: %s", len(texts), args.data, dict(bad) or 0)
@@ -200,8 +159,10 @@ def main() -> None:
     X_train, X_test, y_train, y_test = train_test_split(
         texts, y, test_size=TEST_SIZE, random_state=RANDOM_STATE, stratify=y
     )
-    X_train = [clean_text(t) for t in X_train]
-    X_test = [clean_text(t) for t in X_test]
+    normalize = get_normalizer(args.normalizer)
+    X_test_raw = X_test
+    X_train = [normalize(t) for t in X_train]
+    X_test = [normalize(t) for t in X_test]
 
     cfg = CONFIGS[args.config]
     model = build_pipeline(cfg, y_train)
@@ -222,7 +183,10 @@ def main() -> None:
         "trained_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "sklearn_version": sklearn.__version__,
         "config_name": args.config,
-        "config": {k: list(v) if isinstance(v, tuple) else v for k, v in cfg.items()},
+        "config": {
+            **{k: list(v) if isinstance(v, tuple) else v for k, v in cfg.items()},
+            "normalizer": args.normalizer,
+        },
         "metrics": metrics,
         "metrics_note": "Случайный стратифицированный сплит 80/20; оценка завышена (01-review R-36).",
         "fit_time_sec": round(fit_time, 1),
@@ -240,6 +204,19 @@ def main() -> None:
     }
     (args.out / "model_meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
     logger.info("сохранено: %s, %s", model_path, args.out / "model_meta.json")
+    if args.test_sample:
+        save_test_sample(args.out / "test_sample.pkl", X_test_raw, X_test, y_test)
+
+
+def save_test_sample(path: Path, raw: list[str], cleaned: list[str], labels: np.ndarray) -> None:
+    """Отложенная выборка в формате ноутбука model_mlflow: text_raw, text_clean, label, n_words (pickle DataFrame)."""
+    import pandas as pd  # только для этого файла; в рантайме сервиса pandas не нужен
+
+    n_words = [len(text.split()) for text in cleaned]
+    sample = pd.DataFrame({"text_raw": raw, "text_clean": cleaned, "label": labels, "n_words": n_words})
+    with path.open("wb") as f:
+        pickle.dump(sample, f)
+    logger.info("сохранено: %s (%d строк)", path, len(sample))
 
 
 if __name__ == "__main__":

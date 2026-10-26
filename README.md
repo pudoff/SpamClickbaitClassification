@@ -8,23 +8,33 @@
 
 ```
 ├── README.md                      ← этот файл: запуск, структура, статус
+├── MODEL_CARD.md                  ← карточка модели rnn-cnn-lr: метрики, ограничения, риски
 ├── compose.yaml                   ← Docker Compose: inference-api + trainer (профиль train)
-├── .env.example                   ← шаблон настроек (порт, пороги, конфиг обучения) → скопировать в .env
+├── .env.example                   ← шаблон настроек (порт, модель, пороги, конфиг LR) → скопировать в .env
+├── pyproject.toml, poetry.lock    ← Poetry (venv в .venv), настройки ruff и pytest
+├── .pre-commit-config.yaml        ← ruff check + ruff format для inference-api/ и Datasets/scripts/
 ├── inference-api/                 ← FastAPI-сервис классификатора (описание в inference-api/README.md)
-│   ├── app/                       ←   main.py (эндпоинты) · schemas.py (pydantic) · model.py · text.py · config.py
-│   ├── training/train.py          ←   обучение модели из df.csv → models/model.joblib + model_meta.json
+│   ├── app/                       ←   main.py (эндпоинты) · schemas.py (pydantic) · model.py (загрузка, политика)
+│   │                              ←   ensemble.py (RNN/CNN, смесь, формат комплекта) · labels.py (классы)
+│   │                              ←   artifacts.py (sha256, загрузка LR) · config.py · logs.py · text.py
+│   ├── training/train.py          ←   отдельная LR из df.csv → models/model.joblib + model_meta.json
 │   ├── training/export_ensemble.py ←  экспорт готового ансамбля → models/ensemble/manifest.json
-│   ├── tests/                     ←   тесты API через TestClient
-│   ├── notebooks/                 ←   запуск из Jupyter/Colab (uvicorn + nest_asyncio)
+│   ├── training/data.py, metrics.py ← чтение df.csv и метрики, общие для обоих скриптов
+│   ├── tests/                     ←   тесты на игрушечных моделях; снимки контракта в tests/snapshots/
+│   ├── notebooks/                 ←   запуск из Jupyter/Colab (uvicorn в фоне)
 │   ├── models/                    ←   артефакты модели (не в git)
 │   └── Dockerfile
 ├── Datasets/
 │   ├── df.csv                     ← текстовый датасет (Git LFS): text, is_spam1_or_clickbait2 (0 обычное, 1 спам, 2 кликбейт)
-│   ├── dataset_description.md/html ← описание данных и результаты моделей
-│   ├── task1_report.md/html       ← короткий отчёт для преподавателя
-│   ├── notebooks/                ← model.ipynb, model_mlflow.ipynb, model_rnn.ipynb
-│   ├── scripts/                  ← EDA, загрузчик, перевод, рендер отчёта, requirements.txt
-│   └── outputs/                  ← графики, модели, CSV/NPY, HTML-профили, mlflow.db, test_model.py, eda/
+│   ├── 1_EDA-TFIDF_LogisticRegression.ipynb ← EDA и лучшая TF-IDF/LR (входит в ансамбль)
+│   ├── 2_RNN_CNN_LR.ipynb         ← RNN, char-CNN и ансамбль
+│   ├── dataset_description.md     ← описание данных и результаты моделей
+│   ├── Homework1_report.md        ← отчёт по первому заданию
+│   ├── notebooks/                 ← ранние ноутбуки: model.ipynb, model_mlflow.ipynb, model_rnn.ipynb, model_rnn_2.ipynb
+│   ├── scripts/                   ← загрузчик, фильтрация, grouped-сплит, EDA, перевод, тесты, requirements.txt
+│   └── outputs/                   ← графики, CSV/NPY, HTML-профили, mlflow.db, test_model.py, eda/
+├── Reports/                       ← снимок манифеста ансамбля для Model Card, BPMN-диаграмма
+├── Переобучение.bpmn              ← BPMN процесса переобучения
 ├── ConceptAndArchitecture/
 │   ├── до ревью/                  ← версия 1 (история): docx, pptx, прототип audio_module
 │   └── после ревью/               ← версия 2 — актуальный концепт, архитектура, OpenAPI-контракт
@@ -33,24 +43,40 @@
 
 ## Как запустить
 
-Нужны Docker с Compose и комплект ансамбля в `inference-api/models/ensemble/`.
-Все Docker-команды выполняются из корня репозитория. Комплект исключён из Git
-и после клонирования отсутствует: получите его у команды или выполните экспорт
-по [инструкции сервиса](inference-api/README.md#если-api-возвращает-503).
-Без модели Swagger работает, но `/healthcheck` и корректные запросы к `/predict`
-возвращают 503; после периода ожидания контейнер становится `unhealthy`.
+Всё запускается в Docker из корня репозитория. Нужны **Docker Desktop** (должен быть запущен) и **Git LFS**. В системный Python ничего ставить не нужно.
 
-Dockerfile пока использует **корневые** `pyproject.toml` и `poetry.lock`,
-устанавливая группы `main,training,dev`. Отдельный `inference-api/poetry.lock`
-предназначен для локального окружения API и в Docker-сборке пока не используется.
-Poetry устанавливается только в стадии сборки, на компьютере нужен лишь Docker.
+### 1. Подготовка
 
 ```bash
-# В .env: MODEL_FILE=ensemble/manifest.json
-docker compose up -d --build inference-api
+git clone https://github.com/pudoff/SpamClickbaitClassification.git && cd SpamClickbaitClassification
+git lfs pull                 # Datasets/df.csv (~380 МБ): нужен тренеру и экспорту, для самого API не обязателен
+cp .env.example .env         # порт, модель, пороги; поменяйте при необходимости
 ```
 
-Откройте **http://localhost:8000/docs** — Swagger UI, где можно вызвать все эндпоинты.
+### 2. Модель
+
+Сервис по умолчанию грузит **ансамбль** из `inference-api/models/ensemble/` (`manifest.json`, `rnn.pt`, `char.pt`, `lr.joblib`, `vocab.json`). В Git его нет: возьмите каталог у команды или выполните экспорт по [инструкции сервиса](inference-api/README.md#1-подготовить-комплект-ансамбля).
+
+Если комплекта нет, можно запустить сервис на отдельной LR (TF-IDF + LogisticRegression). Обучите её тренером, затем в `.env` укажите `MODEL_FILE=model.joblib`:
+
+```bash
+# exp4 на всём df.csv, ~15 мин → inference-api/models/model.joblib + model_meta.json (+ test_sample.pkl для тестов модели)
+docker compose --profile train run --rm trainer python -m training.train --data=/data/df.csv --out=/models --config=exp4 --test-sample
+# быстрая проверка (~1 мин): ... --config=baseline --max-rows=20000
+```
+
+Результат exp4 (24.10.2026, sklearn 1.8.0): accuracy **0.8326**, macro-F1 **0.8038** на случайном отложенном сплите (метрики завышены, см. ниже). LR, обученная другой версией scikit-learn (не 1.8.0, как в образе), работает ненадёжно: переобучите её тренером.
+
+Нормализация текста версионируется: тренер обучает на `clean-text-v2` (ссылки маскируются в любом регистре) и пишет версию в `model_meta.json` → `config.normalizer`; сервис применяет к запросам ту же версию. Выпущенный ансамбль и старые LR без этой записи работают на прежней `notebook-clean-text-v1`.
+
+### 3. Запуск API
+
+```bash
+docker compose up -d --build inference-api
+docker compose ps            # через 10–20 с (загрузка torch): Up … (healthy)
+```
+
+Откройте **http://localhost:8000/docs** — Swagger UI, где можно вызвать все эндпоинты (порт задаётся `API_PORT` в `.env`).
 
 | Эндпоинт | Что делает |
 |---|---|
@@ -58,33 +84,30 @@ docker compose up -d --build inference-api
 | `GET /healthcheck` | Сервис жив и модель загружена (иначе ответ 503 с причиной) |
 | `GET /model-info` | Версия модели, дата обучения, метрики, конфигурация, пороги |
 
-Другие команды:
+Если модели нет или комплект неполный, сервис всё равно стартует, но `/healthcheck` и `/predict` отвечают **503**, а причина видна в `detail` и в `docker compose logs inference-api`. Молча перейти на другую модель сервис не может.
 
 ```bash
-docker compose ps                                      # статус (healthy = модель загружена)
 docker compose logs -f inference-api                   # логи
-docker compose run --rm inference-api pytest -q        # тесты
-docker compose run --rm inference-api ruff check .     # линтер
 docker compose down                                    # остановить
 ```
 
-Отдельный LR-тренер для экспериментов (не создаёт ансамбль и не переключает API):
+### 4. Проверки (тесты и линтеры)
 
 ```bash
-docker compose --profile train run --rm trainer python -m training.train \
-    --data=/data/df.csv --out=/models --config=baseline --max-rows=20000
+docker compose build inference-api                                    # после правок кода: код копируется в образ
+docker compose run --rm inference-api pytest -q -p no:cacheprovider   # тесты сервиса: 82 passed, 2 skipped
+docker compose run --rm inference-api ruff check .                    # линтер
+docker compose run --rm inference-api ruff format --check .           # формат
+docker compose run --rm -v ./Datasets:/data:ro -w /data/scripts inference-api python -m pytest -q -p no:cacheprovider   # тесты Datasets/scripts
+# тесты качества «Модели 2» на артефактах тренера (нужен --test-sample при обучении, ~2 мин)
+docker compose run --rm -v ./Datasets:/data:ro -v ./inference-api/models:/artifacts:ro -e TEST_MODEL_DIR=/artifacts -w /data/outputs inference-api python -m pytest -q -p no:cacheprovider test_model.py
 ```
 
-## Локальный запуск без Docker
+Два пропущенных теста сервиса сверяют структуру манифеста с эталоном в `Reports/`, которого нет внутри образа. С примонтированным репозиторием они выполняются: `docker compose run --rm -v .:/repo -w /repo inference-api python -m pytest -q -p no:cacheprovider` (84 passed).
 
-Можно использовать **Poetry** или **обычный venv с pip и requirements**.
-Для обоих вариантов нужен Python 3.12. Выберите один способ для своей `.venv`:
-Poetry и pip не следует использовать для параллельного управления одним окружением.
-Все команды ниже начинаются из корня репозитория.
+`test_model.py` на exp4 от 24.10.2026: 3 passed, 3 failed. Падения — найденные слабые места модели, а не ошибки кода: добавленная ссылка меняет 16 % предсказаний (порог 10 %), очень длинный повторённый кликбейт уходит в «обычное», на коротких репликах macro-F1 0.56 (70 % от общего, требуется 85 %).
 
-### Вариант 1: Poetry
-
-Для запуска только API используйте отдельный проект в `inference-api`.
+Pre-commit (ruff check + format для `inference-api/` и `Datasets/scripts/`) настроен через Poetry, окружение Python 3.12 как в образе: `poetry install --with dev`, затем `poetry run pre-commit install`.
 Нужен установленный Poetry 2.5.1. Из корня перейдите в папку сервиса и настройте
 локальное окружение:
 
@@ -169,15 +192,17 @@ poetry run python -m pytest -q Datasets/scripts/test_dataset_filtering.py Datase
 
 ## Что сделано на данный момент
 
-Учебные документы: [Model Card](MODEL_CARD.md) · [BPMN retraining-цикла — просмотр](Reports/2026-10-18/bpmn/retraining_cycle.html) · [BPMN — исходник](Reports/2026-10-18/bpmn/retraining_cycle.bpmn) · [Poetry, линтеры и pre-commit — самостоятельная инструкция](Reports/2026-10-18/homework_production_manual.md).
+Учебные документы: [Model Card](MODEL_CARD.md) · [BPMN переобучения](Переобучение.bpmn) · [BPMN-диаграмма](Reports/diagram.bpmn) · [снимок манифеста ансамбля](Reports/2026-10-18/model_card/model_manifest_snapshot.json).
 
 | Часть | Статус |
 |---|---|
 | Концепт и архитектура v2 после перекрёстного ревью | ✅ готово, ждёт согласования командой |
 | Текстовый датасет `df.csv` (Git LFS, ~380 МБ: 642 тыс. строк, после удаления дублей 456 тыс.) | ✅ последняя версия от 07.10.2026 |
-| «Модель 2»: TF-IDF word+char → LogisticRegression, эксперименты в MLflow | ✅ ноутбук и pytest-проверки (`Datasets/outputs/test_model.py`) |
+| «Модель 2»: TF-IDF word+char → LogisticRegression, эксперименты в MLflow | ✅ ноутбук; переобучена тренером на sklearn 1.8.0 (exp4, нормализация v2); pytest-проверки `Datasets/outputs/test_model.py` запускаются на артефактах тренера |
 | Сервис инференса `inference-api` (FastAPI, Swagger, pydantic-валидация) | ✅ RNN/CNN из второго ноутбука + сохранённая лучшая LR из первого; веса заново по dev; фактические метрики и состав через `/model-info` |
 | Воспроизводимое обучение в контейнере (`trainer`) | ✅ конфигурации из ноутбука: baseline, exp1–exp5 |
+| Рефакторинг `inference-api` без изменения поведения | ✅ общие модули (`labels`, `artifacts`, `logs`, `training/data`, `metrics`), экспорт по шагам; снимки контракта и вероятностей в тестах |
+| Исправления после рефакторинга | ✅ маскирование ссылок КАПСОМ (`clean-text-v2`), `httpx2` для TestClient, загрузка моделей через joblib, `.gitignore`/`.dockerignore` |
 | ASR (GigaAM-v3 + Silero VAD + определение языка) | ⏳ прототип `audio_module` в «до ревью», в сервис не подключён |
 | Аудио-API `/v1/classifications` по контракту `04-service-contract.openapi.yaml` | ⏳ не начато |
 | Telegram-бот (aiogram) | ⏳ не начато |

@@ -1,0 +1,547 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Spam & Clickbait Inference API",
+    "summary": "Классификация текста сообщения на spam / clickbait / normal.",
+    "description": "Текстовая часть `inference-api` из `ConceptAndArchitecture/после ревью/.../03-final-architecture.md`. По умолчанию — ансамбль RNN + char-CNN + TF-IDF/LogisticRegression из `Datasets/2_RNN_CNN_LR.ipynb`; веса выбраны на dev. Загруженная версия и состав доступны через /model-info. Низкая уверенность возвращается как `uncertain`, а не как `normal`.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/predict": {
+      "post": {
+        "tags": [
+          "inference"
+        ],
+        "summary": "Predict",
+        "description": "Инференс модели: JSON на входе, предсказание на выходе.",
+        "operationId": "predict_predict_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PredictRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PredictResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/healthcheck": {
+      "get": {
+        "tags": [
+          "service"
+        ],
+        "summary": "Healthcheck",
+        "description": "Сервис жив и модель загружена.",
+        "operationId": "healthcheck_healthcheck_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Модель не загружена",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/model-info": {
+      "get": {
+        "tags": [
+          "service"
+        ],
+        "summary": "Model Info",
+        "description": "Метаданные модели: версия, дата обучения, метрики.",
+        "operationId": "model_info_model_info_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelInfo"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "unavailable"
+            ],
+            "title": "Status"
+          },
+          "model_loaded": {
+            "type": "boolean",
+            "title": "Model Loaded"
+          },
+          "model_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Version"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "model_loaded"
+        ],
+        "title": "HealthResponse"
+      },
+      "Metrics": {
+        "properties": {
+          "f1_macro": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "F1 Macro"
+          },
+          "accuracy": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracy"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "Metrics"
+      },
+      "ModelInfo": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "model_version": {
+            "type": "string",
+            "title": "Model Version",
+            "description": "Идентификатор вида имя@версия, как в ModelVersions контракта."
+          },
+          "trained_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trained At",
+            "description": "Дата обучения (UTC)."
+          },
+          "framework": {
+            "type": "string",
+            "title": "Framework"
+          },
+          "sklearn_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sklearn Version"
+          },
+          "artifact": {
+            "type": "string",
+            "title": "Artifact"
+          },
+          "artifact_sha256": {
+            "type": "string",
+            "title": "Artifact Sha256"
+          },
+          "classes": {
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "spam",
+                "clickbait",
+                "normal"
+              ]
+            },
+            "type": "object",
+            "title": "Classes"
+          },
+          "metrics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Metrics"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Метрики test из экспорта; протокол и ограничения указаны в dataset/config."
+          },
+          "dataset": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset"
+          },
+          "config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config"
+          },
+          "policy": {
+            "$ref": "#/components/schemas/Policy"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "version",
+          "model_version",
+          "trained_at",
+          "framework",
+          "sklearn_version",
+          "artifact",
+          "artifact_sha256",
+          "classes",
+          "metrics",
+          "policy"
+        ],
+        "title": "ModelInfo"
+      },
+      "Policy": {
+        "properties": {
+          "tau": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Tau"
+          },
+          "tau_spam": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Tau Spam"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tau",
+          "tau_spam"
+        ],
+        "title": "Policy"
+      },
+      "PredictRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Text",
+            "description": "Сырой текст сообщения (до 20 000 символов, как transcript в контракте)."
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold",
+            "description": "Порог уверенности для этого запроса. Если не задан — политика сервиса (TAU / TAU_SPAM)."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "PredictRequest",
+        "description": "Текст для классификации. В будущем сюда попадёт расшифровка GigaAM.",
+        "examples": [
+          {
+            "text": "Вам одобрен кредит на 300 000 рублей! Перезвоните по номеру 8-800..."
+          },
+          {
+            "text": "Ты не поверишь, что случилось с ценами! Срочно перешли всем",
+            "threshold": 0.5
+          },
+          {
+            "text": "Буду через десять минут, возьми хлеба"
+          }
+        ]
+      },
+      "PredictResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "classified",
+              "uncertain"
+            ],
+            "title": "Status",
+            "description": "classified — метка выставлена; uncertain — уверенность ниже порога, метки нет."
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "spam",
+                  "clickbait",
+                  "normal"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label",
+            "description": "Метка; заполнена только при status = classified."
+          },
+          "label_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "enum": [
+                  0,
+                  1,
+                  2
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label Id",
+            "description": "Метка в кодировке датасета: 0 normal, 1 spam, 2 clickbait."
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "low_confidence"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "description": "Вероятность наиболее вероятного класса."
+          },
+          "threshold": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Threshold",
+            "description": "Порог, с которым сравнивалась уверенность."
+          },
+          "scores": {
+            "$ref": "#/components/schemas/Scores"
+          },
+          "model_version": {
+            "type": "string",
+            "title": "Model Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "label",
+          "label_id",
+          "reason",
+          "confidence",
+          "threshold",
+          "scores",
+          "model_version"
+        ],
+        "title": "PredictResponse"
+      },
+      "Scores": {
+        "properties": {
+          "spam": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Spam"
+          },
+          "clickbait": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Clickbait"
+          },
+          "normal": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Normal"
+          }
+        },
+        "type": "object",
+        "required": [
+          "spam",
+          "clickbait",
+          "normal"
+        ],
+        "title": "Scores",
+        "description": "Вероятности классов; сумма равна 1 с точностью до округления."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

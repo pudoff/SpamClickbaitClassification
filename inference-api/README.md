@@ -10,7 +10,7 @@ FastAPI-сервис классификации текста: **normal / spam / 
 
 ## 1. Подготовить комплект ансамбля
 
-В этой рабочей копии комплект подготовлен в `inference-api/models/ensemble/`. Для другого компьютера передайте этот каталог отдельно: веса исключены из Git. Одного `rnn_best.pt` недостаточно — нужны обе сети, словари, LR и манифест.
+Комплект лежит в `inference-api/models/ensemble/` и в Git не хранится: на другой компьютер передайте каталог целиком или выполните экспорт. Одного `rnn_best.pt` недостаточно — нужны обе сети, словари, LR и манифест.
 
 Для воспроизведения экспорта нужны:
 
@@ -150,7 +150,7 @@ poetry run python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 `..\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000`
 в Windows. Команды выполняются из `inference-api`.
 
-`TORCH_NUM_THREADS` по умолчанию равен 2. Это CPU-инференс; CUDA и GPU не требуются. Модели загружаются один раз при старте, переводятся в eval, предсказания выполняются без градиентов.
+`TORCH_NUM_THREADS` по умолчанию равен 2; значение читается в `Settings` и проверяется при старте (меньше 1 — сервис не запустится, как и при `TAU` вне [0, 1]). Это CPU-инференс; CUDA и GPU не требуются. Модели загружаются один раз при старте, переводятся в eval, предсказания выполняются без градиентов.
 
 ## 3. Проверить результат
 
@@ -197,15 +197,48 @@ Pop-Location
 `../.venv/bin/python -m pytest -q` в Linux/macOS или
 `..\.venv\Scripts\python.exe -m pytest -q` в Windows.
 
-Либо из корня выполните `docker compose run --rm inference-api pytest -q`:
+Либо из корня выполните `docker compose run --rm inference-api pytest -q -p no:cacheprovider`:
 Dockerfile пока устанавливает корневые группы `main,training,dev` и использует
 корневой lock-файл. Тесты не требуют настоящих весов: создают небольшие временные
 модели и проверяют обе ветки загрузки, взвешивание, сериализацию, API,
-Swagger/OpenAPI и отказ при повреждении компонентов. Реальная эквивалентность
+Swagger/OpenAPI, шаги экспорта на синтетическом макете каталогов и отказ при
+повреждении компонентов. Реальная эквивалентность
 сохранённому ноутбуку проверяется экспортом отдельно.
+
+Характеризационные тесты (`tests/test_characterization.py`, снимки в `tests/snapshots/`) фиксируют контракт: `/openapi.json` побайтно, таблицу решений `decide()`, словарь метрик `train`, структуру манифеста и вероятности игрушечного ансамбля. Снимки перезаписываются только осознанно, при изменении контракта: `UPDATE_SNAPSHOTS=1 pytest`. Два теста сверяют структуру с эталоном `Reports/…/model_manifest_snapshot.json`; в образе его нет, поэтому там они пропускаются (`2 skipped`), а с примонтированным репозиторием выполняются.
+
+## Структура кода
+
+| Модуль | Что внутри |
+|---|---|
+| `app/main.py` | `create_app`, эндпоинты, `get_model` (503, пока модель не загружена; вызывается после валидации тела, поэтому 422 важнее 503), `build_model_info` |
+| `app/model.py` | `load_model` (ансамбль или LR), `LoadedModel` (`name`, `version`, `model_version`, `trained_at`), политика `decide()` → `Decision` |
+| `app/ensemble.py` | RNN/char-CNN, `encode_texts`, `blend`, `EnsemblePredictor`, формат комплекта (`FORMAT`, `COMPONENTS`, `BUNDLE_FILES`, `save_bundle`, `load_ensemble`) |
+| `app/labels.py` | `LABELS`, `CLASS_IDS`, `LABEL_IDS`, `N_CLASSES` — единственное место с кодировкой классов |
+| `app/artifacts.py` | `sha256_of`, `load_artifact` (`.joblib` / `.pkl`) |
+| `app/config.py` | `Settings` из окружения: `MODEL_PATH`, `MODEL_META_PATH`, `TAU`, `TAU_SPAM`, `TORCH_NUM_THREADS` |
+| `app/schemas.py` | pydantic-схемы контракта, тип `Probability` |
+| `app/logs.py` | `configure_logging()` — один формат логов для сервиса и скриптов |
+| `app/text.py` | нормализация по версиям: `clean_text` (`notebook-clean-text-v1`, побайтно как в ноутбуках, не менять) и `clean_text_v2` (`clean-text-v2`); `normalizer_of(meta)` выбирает версию модели |
+| `training/train.py` | отдельная LR: конфиги, `build_pipeline`, CLI (`--normalizer`, `--test-sample`) |
+| `training/export_ensemble.py` | экспорт ансамбля по шагам: `load_sources` → `restore_models` → `verify_parity` → `select_weights` → `evaluate_test` → `build_meta` |
+| `training/data.py` | `load_fixed_csv`, `deduplicate`, `import_dataset_scripts` |
+| `training/metrics.py` | `evaluate()` — метрики для `train` и экспорта |
+| `tests/conftest.py` | `TOY_DATA`, игрушечные LR и ансамбль, фабрика `make_settings` |
 
 ## LogisticRegression для отдельных экспериментов
 
 Поддержка прежних `model.joblib`/`model.pkl` сохранена явно: задайте `MODEL_FILE=model.joblib` в `.env` или `MODEL_PATH=models/model.joblib` при локальном запуске. Это переключение на LR, а не ансамбль.
 
 `python -m training.train` по-прежнему обучает **только LR**, а его исторический случайный split отличается от нового протокола ноутбуков. Этот тренер не создаёт ансамбль и не заменяет описанный экспорт. По умолчанию Compose/API ожидают `ensemble/manifest.json`.
+
+Тренер обучает на нормализации `clean-text-v2` (флаг `--normalizer`) и записывает её в `model_meta.json` → `config.normalizer`; сервис берёт версию оттуда, неизвестная версия даёт 503. Флаг `--test-sample` дополнительно сохраняет `test_sample.pkl` (91 110 строк: `text_raw`, `text_clean`, `label`, `n_words`) для `Datasets/outputs/test_model.py`.
+
+## Нормализация текста
+
+| Версия | Функция | Где используется |
+|---|---|---|
+| `notebook-clean-text-v1` | `clean_text` | ноутбуки, выпущенный ансамбль, LR без записи `config.normalizer` |
+| `clean-text-v2` | `clean_text_v2` | тренер LR по умолчанию |
+
+v2 приводит текст к нижнему регистру до масок, поэтому ссылки КАПСОМ (`HTTP://…`, `WWW.…`) тоже становятся `url`. На всём `df.csv` обе версии дают одинаковый результат (ссылок КАПСОМ там нет), так что переобучение на v2 не меняет модель; разница проявляется только на реальных входящих сообщениях. Ансамбль перейдёт на v2 после переобучения ноутбуков: экспорт принимает `--normalizer=clean-text-v2`.

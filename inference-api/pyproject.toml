@@ -31,6 +31,11 @@ pythonpath = ["."]
 [tool.ruff]
 line-length = 120
 target-version = "py312"
+extend-exclude = ["*.ipynb"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.isort]
+# Как в корневом pyproject.toml: иначе порядок импортов зависит от каталога запуска.
+known-first-party = ["app", "training", "tests"]

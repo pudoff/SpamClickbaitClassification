@@ -1,65 +1,24 @@
-"""Exercise exported ensembles through the same loader and endpoints as production."""
+"""Экспортированный ансамбль через тот же загрузчик и эндпоинты, что в рабочем сервисе."""
 
 import json
+import shutil
 
 import numpy as np
 import pytest
 import torch
-from app.config import Settings
-from app.ensemble import (
-    CharCNN,
-    Encoding,
-    EnsemblePredictor,
-    SpamClickbaitNet,
-    build_vocabularies,
-    load_ensemble,
-    save_bundle,
-)
+from fastapi.testclient import TestClient
+
+from app.ensemble import load_ensemble
 from app.main import create_app
 from app.text import clean_text
-from fastapi.testclient import TestClient
-from training.train import BASE_CONFIG, build_pipeline
-
-from tests.test_api import TOY_DATA
-
-
-@pytest.fixture(scope="module")
-def ensemble_bundle(tmp_path_factory):
-    torch.set_num_threads(1)
-    torch.manual_seed(42)
-    texts = [clean_text(text) for text, _ in TOY_DATA]
-    labels = np.array([label for _, label in TOY_DATA])
-    encoding = Encoding(max_len=16, max_chars=24, vocab_limit=100, min_freq=1)
-    vocab, char_vocab = build_vocabularies(texts, encoding)
-    lr = build_pipeline({**BASE_CONFIG, "word_min_df": 1, "char_min_df": 1}, labels).fit(texts, labels)
-    predictor = EnsemblePredictor(
-        SpamClickbaitNet(len(vocab), len(char_vocab)),
-        CharCNN(len(char_vocab)),
-        lr,
-        vocab,
-        char_vocab,
-        {"rnn": 0.4, "char": 0.4, "lr": 0.2},
-        encoding,
-    )
-    folder = tmp_path_factory.mktemp("ensemble")
-    path = save_bundle(
-        folder,
-        predictor,
-        {
-            "name": "rnn-cnn-lr",
-            "version": "test",
-            "framework": "PyTorch + scikit-learn",
-            "config": {"weights": predictor.weights, "selection_split": "dev"},
-        },
-    )
-    return path, predictor
+from tests.snapshot import snapshot
 
 
 def test_bundle_roundtrip_and_weighted_probabilities(ensemble_bundle):
     path, original = ensemble_bundle
     restored, _ = load_ensemble(path)
     texts = [clean_text("Вам одобрен кредит срочно позвоните"), "", "неизвестноеслово", " NUM "]
-    # Independent weighted sum before serialization vs public predictor after loading.
+    # Независимая взвешенная сумма до сохранения против публичного predict_proba после загрузки.
     parts = original.component_probabilities(texts)
     expected = 0.4 * parts["rnn"] + 0.4 * parts["char"] + 0.2 * parts["lr"]
     actual = restored.predict_proba(texts)
@@ -67,6 +26,29 @@ def test_bundle_roundtrip_and_weighted_probabilities(ensemble_bundle):
     assert np.isfinite(actual).all()
     np.testing.assert_allclose(actual.sum(axis=1), 1)
     assert restored.predict_proba([]).shape == (0, 3)
+
+
+SNAPSHOT_TEXTS = [
+    "Вам одобрен кредит, перезвоните по номеру 8-800-555-35-35!",
+    "Шок! Вы не поверите, что она сделала — смотрите до конца",
+    "Буду через десять минут, возьми хлеба",
+    "Скидка 90% только сегодня: https://example.com/sale",
+    "",
+]
+
+
+def test_toy_ensemble_probabilities_snapshot(ensemble_bundle):
+    """Вероятности игрушечного ансамбля до и после загрузки совпадают с сохранёнными (atol=1e-7)."""
+    path, original = ensemble_bundle
+    restored, _ = load_ensemble(path)
+    texts = [clean_text(text) for text in SNAPSHOT_TEXTS]
+    parts = original.component_probabilities(texts)
+    actual = {"blend": original.predict_proba(texts).tolist(), **{key: value.tolist() for key, value in parts.items()}}
+    expected = json.loads(snapshot("toy_ensemble_proba.json", actual))
+    assert list(expected) == ["blend", "rnn", "char", "lr"]
+    for key, value in expected.items():
+        np.testing.assert_allclose(actual[key], value, rtol=0, atol=1e-7)
+    np.testing.assert_allclose(restored.predict_proba(texts), expected["blend"], rtol=0, atol=1e-7)
 
 
 def test_eval_does_not_update_batchnorm(ensemble_bundle):
@@ -78,9 +60,9 @@ def test_eval_does_not_update_batchnorm(ensemble_bundle):
         assert torch.equal(value, before[key])
 
 
-def test_ensemble_api_and_swagger(ensemble_bundle):
+def test_ensemble_api_and_swagger(ensemble_bundle, make_settings):
     path, predictor = ensemble_bundle
-    settings = Settings(model_path=path, meta_path=path.with_name("unused.json"), tau=0.55, tau_spam=0.65)
+    settings = make_settings(path)
     text = "Вам одобрен кредит срочно позвоните"
     expected = predictor.predict_proba([clean_text(text)])[0]
     with TestClient(create_app(settings)) as client:
@@ -97,29 +79,39 @@ def test_ensemble_api_and_swagger(ensemble_bundle):
         assert {"/predict", "/healthcheck", "/model-info"}.issubset(client.get("/openapi.json").json()["paths"])
 
 
-@pytest.mark.parametrize("damage", ["checksum", "weights", "missing", "sklearn", "classes"])
-def test_invalid_ensemble_is_unavailable_without_lr_fallback(ensemble_bundle, tmp_path, damage):
-    import shutil
+def corrupt_checksum(folder, manifest):
+    (folder / "vocab.json").write_text("{}", encoding="utf-8")
 
+
+def negative_weight(folder, manifest):
+    manifest["weights"]["rnn"] = -0.4
+
+
+def missing_file(folder, manifest):
+    (folder / "char.pt").unlink()
+
+
+def incompatible_sklearn(folder, manifest):
+    manifest["meta"]["sklearn_version"] = "incompatible-version"
+
+
+def wrong_class_order(folder, manifest):
+    manifest["classes"] = [1, 0, 2]
+
+
+@pytest.mark.parametrize(
+    "damage",
+    [corrupt_checksum, negative_weight, missing_file, incompatible_sklearn, wrong_class_order],
+    ids=lambda damage: damage.__name__,
+)
+def test_invalid_ensemble_is_unavailable_without_lr_fallback(ensemble_bundle, tmp_path, make_settings, damage):
     path, _ = ensemble_bundle
     for artifact in path.parent.iterdir():
         shutil.copyfile(artifact, tmp_path / artifact.name)
     manifest_path = tmp_path / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    if damage == "checksum":
-        (tmp_path / "vocab.json").write_text("{}", encoding="utf-8")
-    elif damage == "weights":
-        manifest["weights"]["rnn"] = -0.4
-        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
-    elif damage == "sklearn":
-        manifest["meta"]["sklearn_version"] = "incompatible-version"
-        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
-    elif damage == "classes":
-        manifest["classes"] = [1, 0, 2]
-        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
-    else:
-        (tmp_path / "char.pt").unlink()
-    settings = Settings(model_path=manifest_path, meta_path=tmp_path / "unused.json", tau=0.55, tau_spam=0.65)
-    with TestClient(create_app(settings)) as client:
+    damage(tmp_path, manifest)
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    with TestClient(create_app(make_settings(manifest_path))) as client:
         assert client.get("/healthcheck").status_code == 503
         assert client.post("/predict", json={"text": "Привет как дела"}).status_code == 503

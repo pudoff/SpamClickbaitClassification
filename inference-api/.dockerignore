@@ -1,7 +1,8 @@
 models/
 notebooks/
 .venv/
-__pycache__/
-*.pyc
-.pytest_cache/
-.ruff_cache/
+# ** — иначе шаблон срабатывает только в корне контекста
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.ruff_cache/
