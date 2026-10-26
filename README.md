@@ -15,8 +15,7 @@
 │   ├── training/train.py          ←   обучение модели из df.csv → models/model.joblib + model_meta.json
 │   ├── training/export_ensemble.py ←  экспорт готового ансамбля → models/ensemble/manifest.json
 │   ├── tests/                     ←   тесты API через TestClient
-│   ├── notebooks/                 ←   демонстрация API в Jupyter (uvicorn в потоке)
-│   ├── pyproject.toml / poetry.lock ← отдельное окружение для работы API
+│   ├── notebooks/                 ←   запуск из Jupyter/Colab (uvicorn + nest_asyncio)
 │   ├── models/                    ←   артефакты модели (не в git)
 │   └── Dockerfile
 ├── Datasets/
@@ -170,7 +169,7 @@ poetry run python -m pytest -q Datasets/scripts/test_dataset_filtering.py Datase
 
 ## Что сделано на данный момент
 
-Документы: [Model Card](MODEL_CARD.md) · [BPMN — исходник](Reports/diagram.bpmn) · [Окружение, ноутбуки и скрипты](DEVELOPMENT.md).
+Учебные документы: [Model Card](MODEL_CARD.md) · [BPMN retraining-цикла — просмотр](Reports/2026-10-18/bpmn/retraining_cycle.html) · [BPMN — исходник](Reports/2026-10-18/bpmn/retraining_cycle.bpmn) · [Poetry, линтеры и pre-commit — самостоятельная инструкция](Reports/2026-10-18/homework_production_manual.md).
 
 | Часть | Статус |
 |---|---|
@@ -184,8 +183,4 @@ poetry run python -m pytest -q Datasets/scripts/test_dataset_filtering.py Datase
 | Telegram-бот (aiogram) | ⏳ не начато |
 | TTS-обогащение (Piper), калибровка, holdout реальных голосовых | ⏳ не начато |
 
-Ограничение метрик: классы в `df.csv` взяты из разных источников; даже текущее
-разбиение с группировкой по нормализованному тексту не исключает все почти-дубликаты
-и пересечения источников. Исторический LR-тренер использует случайный split.
-Качество на реальных голосовых и влияние ASR отдельно не проверены
-(концепт v2, `05-mlops-and-validation.md`).
+Важно: метрики модели на `df.csv` **завышены** (классы взяты из разных источников, сплит случайный; ревью, R-36). Итоговое качество проверяется на реальных голосовых (концепт v2, `05-mlops-and-validation.md`).
