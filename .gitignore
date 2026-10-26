@@ -1,3 +1,7 @@
+# IDE
+vscode/
+.idea/
+
 # Virtual environments
 .venv/
 env/
@@ -28,3 +32,5 @@ inference-api/models/*
 .env
 .pytest_cache/
 .ruff_cache/
+
+Makefile

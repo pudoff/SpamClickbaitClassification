@@ -8,7 +8,9 @@
 name: spam-clickbait
 
 x-inference-image: &inference-image
-  build: ./inference-api
+  build:
+    context: .
+    dockerfile: inference-api/Dockerfile
   image: spam-clickbait/inference-api:local
 
 services:

@@ -33,7 +33,17 @@
 
 ## Как запустить
 
-Нужны Docker Desktop и комплект ансамбля в `inference-api/models/ensemble/`. Все команды выполняются из корня репозитория. В этой рабочей копии комплект подготовлен; он исключён из Git. На другом компьютере передайте его отдельно или выполните экспорт по [инструкции сервиса](inference-api/README.md).
+Нужны Docker с Compose и комплект ансамбля в `inference-api/models/ensemble/`.
+Все Docker-команды выполняются из корня репозитория. Комплект исключён из Git
+и после клонирования отсутствует: получите его у команды или выполните экспорт
+по [инструкции сервиса](inference-api/README.md#если-api-возвращает-503).
+Без модели Swagger работает, но `/healthcheck` и корректные запросы к `/predict`
+возвращают 503; после периода ожидания контейнер становится `unhealthy`.
+
+Dockerfile пока использует **корневые** `pyproject.toml` и `poetry.lock`,
+устанавливая группы `main,training,dev`. Отдельный `inference-api/poetry.lock`
+предназначен для локального окружения API и в Docker-сборке пока не используется.
+Poetry устанавливается только в стадии сборки, на компьютере нужен лишь Docker.
 
 ```bash
 # В .env: MODEL_FILE=ensemble/manifest.json
@@ -65,13 +75,97 @@ docker compose --profile train run --rm trainer python -m training.train \
     --data=/data/df.csv --out=/models --config=baseline --max-rows=20000
 ```
 
-**Локально без Docker** пакеты ставятся только в `.venv` проекта, в системный Python ничего не ставим:
+## Локальный запуск без Docker
+
+Можно использовать **Poetry** или **обычный venv с pip и requirements**.
+Для обоих вариантов нужен Python 3.12. Выберите один способ для своей `.venv`:
+Poetry и pip не следует использовать для параллельного управления одним окружением.
+Все команды ниже начинаются из корня репозитория.
+
+### Вариант 1: Poetry
+
+Для запуска только API используйте отдельный проект в `inference-api`.
+Нужен установленный Poetry 2.5.1. Из корня перейдите в папку сервиса и настройте
+локальное окружение:
+
+```text
+cd inference-api
+poetry config virtualenvs.in-project true --local
+```
+
+Выберите Python: `poetry env use python3.12` в Linux/macOS или
+`poetry env use 3.12` в Windows. Затем, оставаясь в `inference-api`:
+
+```text
+poetry sync
+poetry run python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+Окружение создаётся в `inference-api/.venv`, версии берутся из
+`inference-api/poetry.lock`. Здесь только зависимости работающего API:
+pytest, Ruff, pandas и Jupyter в этот набор не входят.
+
+### Вариант 2: venv + requirements
+
+Poetry не требуется. Сначала создаётся `.venv`, затем устанавливается CPU-версия
+PyTorch и зависимости сервиса. Используется **`inference-api/requirements-dev.txt`**;
+корневой `requirements.txt` — исторический список другого окружения.
+
+Linux/macOS:
 
 ```bash
-python -m venv .venv
-.venv/Scripts/pip install -r inference-api/requirements-dev.txt     # Windows (Linux/macOS: .venv/bin/pip)
-cd inference-api && ../.venv/Scripts/python -m pytest -q
+python3.12 -m venv .venv
+.venv/bin/python -m pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
+.venv/bin/python -m pip install -r inference-api/requirements-dev.txt
+.venv/bin/python -m pytest -q
+cd inference-api
+../.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
+
+Windows (PowerShell):
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
+.\.venv\Scripts\python.exe -m pip install -r inference-api/requirements-dev.txt
+.\.venv\Scripts\python.exe -m pytest -q
+cd inference-api
+..\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+Активация окружения не нужна: команды явно используют Python из `.venv`.
+В этом варианте pip использует requirements, а `poetry.lock` не применяется:
+версии некоторых инструментов и транзитивных пакетов могут отличаться от Poetry.
+
+В обоих вариантах Swagger доступен на **http://127.0.0.1:8000/docs**, остановка —
+`Ctrl+C`. Для предсказаний нужен комплект в `inference-api/models/ensemble/`;
+без него сервер работает, но возвращает 503 при обращении к модели.
+Локальный запуск читает `MODEL_PATH` (по умолчанию `models/ensemble/manifest.json`
+относительно `inference-api`), а `MODEL_FILE` из `.env` используется Compose.
+Если Docker API уже занимает порт 8000, остановите его командой
+`docker compose stop inference-api` из корня или укажите локальному uvicorn `--port 8001`.
+
+Вариант с `requirements-dev.txt` также покрывает тесты и экспорт ансамбля.
+Для тех же задач через Poetry используйте корневое окружение ниже.
+Полное обучение в исследовательских ноутбуках требует дополнительных библиотек;
+см. [описание ноутбуков и скриптов](DEVELOPMENT.md).
+
+### Корневое окружение для тестов и экспорта
+
+Корневой Poetry-проект сохранён отдельно от минимального окружения API.
+Из корня репозитория выберите Python 3.12 командой `poetry env use python3.12`
+(Windows: `poetry env use 3.12`), затем выполните:
+
+```text
+poetry sync --only main,training,dev
+poetry run python -m pytest -q
+poetry run python -m pytest -q Datasets/scripts/test_dataset_filtering.py Datasets/scripts/test_dataset_splitting.py
+```
+
+Окружение располагается в корневой `.venv`, зависимости берутся из корневого
+`poetry.lock`. Для экспорта из папки `inference-api` используйте
+`poetry -P .. run python -m training.export_ensemble --threads 2`:
+`-P ..` явно выбирает корневой проект с pandas.
 
 ## Что сделано на данный момент
 
