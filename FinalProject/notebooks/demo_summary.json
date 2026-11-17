@@ -1,0 +1,72 @@
+{
+  "notebook": "demo_solution",
+  "dataset": "..\\data\\demo_sample.csv",
+  "n_rows": 15000,
+  "split": {
+    "fit": 10800,
+    "dev": 1200,
+    "test": 3000
+  },
+  "runs": [
+    {
+      "run": "E1_word_only",
+      "dev_macro_f1": 0.7087,
+      "test_accuracy": 0.77,
+      "test_macro_f1": 0.715,
+      "test_f1_normal": 0.8208,
+      "test_f1_spam": 0.8196,
+      "test_f1_clickbait": 0.5047,
+      "fit_sec": 2.7
+    },
+    {
+      "run": "E2_char_only",
+      "dev_macro_f1": 0.7309,
+      "test_accuracy": 0.775,
+      "test_macro_f1": 0.7307,
+      "test_f1_normal": 0.8186,
+      "test_f1_spam": 0.8427,
+      "test_f1_clickbait": 0.5307,
+      "fit_sec": 9.5
+    },
+    {
+      "run": "E3_union_weighted",
+      "dev_macro_f1": 0.7344,
+      "test_accuracy": 0.7883,
+      "test_macro_f1": 0.734,
+      "test_f1_normal": 0.8346,
+      "test_f1_spam": 0.8553,
+      "test_f1_clickbait": 0.5121,
+      "fit_sec": 11.5
+    },
+    {
+      "run": "E4_blend",
+      "dev_macro_f1": 0.7428,
+      "test_accuracy": 0.7933,
+      "test_macro_f1": 0.7455,
+      "test_f1_normal": 0.8362,
+      "test_f1_spam": 0.858,
+      "test_f1_clickbait": 0.5425,
+      "fit_sec": 0.0
+    }
+  ],
+  "blend_weights": [
+    0.3,
+    0.5,
+    0.2
+  ],
+  "policy_working_point": {
+    "coverage": 0.9063,
+    "accuracy_classified": 0.8172,
+    "accuracy_all": 0.7883
+  },
+  "drift": {
+    "psi_fit_vs_test": 0.002,
+    "psi_short_simulation": 9.6508,
+    "macro_f1_before": 0.734,
+    "macro_f1_after_short": 0.6099
+  },
+  "env": {
+    "python": "3.11.9",
+    "sklearn": "1.9.1"
+  }
+}
