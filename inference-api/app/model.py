@@ -10,6 +10,7 @@ import numpy as np
 
 from app.artifacts import load_artifact, sha256_of
 from app.labels import LABEL_IDS, LABELS  # app.model.LABELS — прежнее место, импорт сохраняется
+from app.schemas import Policy
 from app.text import NORMALIZER_V1, get_normalizer, normalizer_of
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,7 @@ class LoadedModel:
     sha256: str
     classes: list[int] = field(default_factory=list)
     normalizer: str = NORMALIZER_V1  # load_model берёт из метаданных (config.normalizer)
+    voice_policy: Policy | None = None
 
     @property
     def normalize(self):
@@ -84,6 +86,7 @@ def load_model(model_path: Path, meta_path: Path, *, num_threads: int | None = N
         raise ValueError(f"модель знает классы {classes}, ожидались {sorted(LABELS)}")
     normalizer = normalizer_of(meta)
     get_normalizer(normalizer)  # неизвестная нормализация — отказ при загрузке (503), а не тихий skew
+    voice_policy = (meta.get("config") or {}).get("voice_policy")
     model = LoadedModel(
         pipeline=pipeline,
         meta=meta,
@@ -91,6 +94,7 @@ def load_model(model_path: Path, meta_path: Path, *, num_threads: int | None = N
         sha256=sha256_of(model_path),
         classes=classes,
         normalizer=normalizer,
+        voice_policy=Policy.model_validate(voice_policy) if voice_policy is not None else None,
     )
     logger.info("модель %s загружена из %s; нормализация %s", model.model_version, model_path, normalizer)
     return model

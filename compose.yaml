@@ -4,7 +4,7 @@
 #   2) Поднять сервис:                                 docker compose up -d --build
 #   3) Swagger UI:                                     http://localhost:8000/docs
 #
-# Бот (aiogram) и ASR появятся здесь отдельными сервисами по мере готовности.
+# ASR работает в inference-api; Telegram-бот запускается профилем telegram.
 name: spam-clickbait
 
 x-inference-image: &inference-image
@@ -21,11 +21,29 @@ services:
         required: false
     environment:
       MODEL_PATH: /models/${MODEL_FILE:-ensemble/manifest.json}
+      ASR_ENABLED: ${ASR_ENABLED:-1}
     volumes:
       - ./inference-api/models:/models:ro
+      - asr-cache:/home/appuser/.cache
     # Только 127.0.0.1: на сервере Swagger открывается через SSH-туннель (§11.1).
     ports:
       - "127.0.0.1:${API_PORT:-8000}:8000"
+    healthcheck:
+      start_period: 5m
+    restart: unless-stopped
+
+  bot:
+    profiles: [telegram]
+    build:
+      context: .
+      dockerfile: inference-api/Dockerfile
+      target: bot
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      INFERENCE_API_URL: http://inference-api:8000
+    depends_on:
+      inference-api:
+        condition: service_healthy
     restart: unless-stopped
 
   trainer:
@@ -45,3 +63,6 @@ services:
     restart: "no"
     healthcheck:
       disable: true
+
+volumes:
+  asr-cache:

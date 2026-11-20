@@ -7,7 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-FROM base AS dependencies
+FROM base AS poetry
 
 ARG POETRY_VERSION=2.5.1
 RUN python -m venv /opt/poetry \
@@ -21,8 +21,22 @@ ENV VIRTUAL_ENV=/opt/venv \
 
 WORKDIR /build
 COPY pyproject.toml poetry.lock ./
-RUN /opt/poetry/bin/poetry check --lock \
-    && /opt/poetry/bin/poetry sync --only main,training,dev --no-root
+RUN /opt/poetry/bin/poetry check --lock
+
+FROM poetry AS bot-dependencies
+RUN /opt/poetry/bin/poetry sync --only bot --no-root
+
+FROM base AS bot
+ENV PATH="/opt/venv/bin:$PATH"
+WORKDIR /srv
+COPY --from=bot-dependencies /opt/venv /opt/venv
+COPY inference-api/bot ./bot
+RUN useradd --create-home --uid 1000 appuser
+USER appuser
+CMD ["python", "-m", "bot"]
+
+FROM poetry AS dependencies
+RUN /opt/poetry/bin/poetry sync --only main,speech,training,dev --no-root
 
 FROM base AS runtime
 
@@ -30,13 +44,19 @@ ENV VIRTUAL_ENV=/opt/venv \
     PATH="/opt/venv/bin:$PATH"
 
 WORKDIR /srv
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --uid 1000 appuser \
+    && mkdir -p /models /home/appuser/.cache \
+    && chown appuser /models /srv /home/appuser/.cache
+
 COPY --from=dependencies /opt/venv /opt/venv
 COPY inference-api/app ./app
+COPY inference-api/audio_module ./audio_module
 COPY inference-api/training ./training
 COPY inference-api/tests ./tests
 COPY inference-api/pyproject.toml ./
 
-RUN useradd --create-home --uid 1000 appuser && mkdir -p /models && chown appuser /models /srv
 USER appuser
 
 ENV MODEL_PATH=/models/ensemble/manifest.json

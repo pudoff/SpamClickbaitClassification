@@ -8,6 +8,7 @@ class LanguageDetector:
 
     def __init__(self, model_size: str = "base"):
         from faster_whisper import WhisperModel  # lazy
+
         self.model = WhisperModel(model_size, device="cpu", compute_type="int8")
 
     def detect(self, wave: np.ndarray) -> tuple[str, float]:

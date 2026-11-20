@@ -1,5 +1,6 @@
 """Аудио-модуль: ASR (инференс) и TTS-аугментация (офлайн-обучение)."""
+
+from .audio_io import AudioDecodeError, AudioError, AudioTooLongError
 from .schemas import ASRConfig, ASRResult, Segment
-from .audio_io import AudioError, AudioDecodeError, AudioTooLongError
 
 __all__ = ["ASRConfig", "ASRResult", "Segment", "AudioError", "AudioDecodeError", "AudioTooLongError"]

@@ -11,6 +11,7 @@ dependencies = [
     "joblib==1.6.0",
     "numpy>=1.24,<2.4",
     "torch==2.10.0",
+    "python-multipart==0.0.34",
 ]
 
 [tool.poetry]
@@ -38,4 +39,4 @@ select = ["E", "F", "I", "B", "UP"]
 
 [tool.ruff.lint.isort]
 # Как в корневом pyproject.toml: иначе порядок импортов зависит от каталога запуска.
-known-first-party = ["app", "training", "tests"]
+known-first-party = ["app", "audio_module", "training", "tests"]

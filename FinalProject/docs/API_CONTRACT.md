@@ -58,9 +58,15 @@ Swagger: `http://localhost:8000/docs`, ReDoc: `/redoc`, спецификация
 Версия, дата обучения, framework, `artifact_sha256`, классы, метрики test из манифеста,
 `dataset` (включая `split_id`), `config` (веса, нормализатор), `policy` (τ, τ_spam).
 
-## 2. Целевой аудиоконтракт (не реализован)
+## 2. Аудиоконтракт
 
-`ConceptAndArchitecture/после ревью/ConceptAndArchitecture/v2/04-service-contract.openapi.yaml`:
+Учебный сервис принимает файлы в `POST /v1/transcriptions` и
+`POST /v1/classifications`. Для кандидата голосового эксперимента
+`/v1/classifications` использует пороги из `config.voice_policy` в метаданных.
+[Действующий контракт и примеры запросов](../../inference-api/README.md#аудио-и-распознавание-речи)
+
+Полный целевой контракт описан в
+`ConceptAndArchitecture/после ревью/ConceptAndArchitecture/v2/04-service-contract.openapi.yaml`.
 
 - `POST /v1/classifications` — `multipart/form-data`, поле `audio` (ogg/opus, m4a, mp3, wav;
   ≤ 20 МБ, ≤ 300 с), заголовки `X-API-Key`, `X-Request-Id`;
@@ -70,9 +76,8 @@ Swagger: `http://localhost:8000/docs`, ReDoc: `/redoc`, спецификация
 - `GET /v1/health`, `GET /v1/service-info` (лимиты и поддерживаемые форматы);
 - ошибки: 401 (ключ), 413 (величина), 415 (формат), 422 (декодирование/длина), 503 (перегрузка/таймаут, `Retry-After`).
 
-Совместимость: текстовый `/predict` — подмножество будущего конвейера (после ASR вызывается
-тот же классификатор и та же политика). Переход на `/v1/classifications` не меняет семантику
-меток и отказа, поэтому бот и сервис могут разрабатываться параллельно по зафиксированному контракту.
+После ASR используется тот же классификатор, что и в `/predict`.
+Метки и семантика отказа совпадают, а голосовой кандидат может иметь собственные пороги.
 
 ## 3. Версионирование контракта
 

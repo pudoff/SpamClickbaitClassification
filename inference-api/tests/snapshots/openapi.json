@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Spam & Clickbait Inference API",
-    "summary": "Классификация текста сообщения на spam / clickbait / normal.",
-    "description": "Текстовая часть `inference-api` из `ConceptAndArchitecture/после ревью/.../03-final-architecture.md`. По умолчанию — ансамбль RNN + char-CNN + TF-IDF/LogisticRegression из `Datasets/2_RNN_CNN_LR.ipynb`; веса выбраны на dev. Загруженная версия и состав доступны через /model-info. Низкая уверенность возвращается как `uncertain`, а не как `normal`.",
+    "summary": "Распознавание речи и классификация сообщений на spam / clickbait / normal.",
+    "description": "JSON с текстом принимается в /predict, аудиофайл — в /v1/classifications. По умолчанию — ансамбль RNN + char-CNN + TF-IDF/LogisticRegression из `Datasets/2_RNN_CNN_LR.ipynb`; веса выбраны на dev. Загруженная версия и состав доступны через /model-info. Низкая уверенность возвращается как `uncertain`, а не как `normal`.",
     "version": "0.1.0"
   },
   "paths": {
@@ -45,6 +45,114 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/v1/transcriptions": {
+      "post": {
+        "tags": [
+          "audio"
+        ],
+        "summary": "Transcriptions",
+        "description": "Распознать русскую речь из файла без классификации.",
+        "operationId": "transcriptions_v1_transcriptions_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_transcriptions_v1_transcriptions_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptionResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Файл больше 20 МиБ"
+          },
+          "415": {
+            "description": "Неподдерживаемый формат или кодек"
+          },
+          "422": {
+            "description": "Файл не декодируется, длиннее 300 с или запрос не прошёл валидацию"
+          },
+          "503": {
+            "description": "Модель недоступна или распознавание занято"
+          }
+        }
+      }
+    },
+    "/v1/classifications": {
+      "post": {
+        "tags": [
+          "audio"
+        ],
+        "summary": "Classifications",
+        "description": "Распознать речь и передать расшифровку существующему классификатору.",
+        "operationId": "classifications_v1_classifications_post",
+        "parameters": [
+          {
+            "name": "x-request-id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z0-9._:-]+$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Request-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_classifications_v1_classifications_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AudioClassificationResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Файл больше 20 МиБ"
+          },
+          "415": {
+            "description": "Неподдерживаемый формат или кодек"
+          },
+          "422": {
+            "description": "Файл не декодируется, длиннее 300 с или запрос не прошёл валидацию"
+          },
+          "503": {
+            "description": "Модель недоступна или распознавание занято"
           }
         }
       }
@@ -106,6 +214,205 @@
   },
   "components": {
     "schemas": {
+      "AudioClassificationResponse": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "classified",
+              "uncertain",
+              "not_classified"
+            ],
+            "title": "Status"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "spam",
+                  "clickbait",
+                  "normal"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "low_confidence",
+                  "no_speech",
+                  "speech_too_short",
+                  "unsupported_language"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "scores": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Scores"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "detected_language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detected Language"
+          },
+          "audio_duration_s": {
+            "type": "number",
+            "title": "Audio Duration S"
+          },
+          "speech_duration_s": {
+            "type": "number",
+            "title": "Speech Duration S"
+          },
+          "transcript": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transcript"
+          },
+          "models": {
+            "$ref": "#/components/schemas/AudioModels"
+          },
+          "timings_ms": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Timings Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request_id",
+          "status",
+          "reason",
+          "detected_language",
+          "audio_duration_s",
+          "speech_duration_s",
+          "transcript",
+          "models",
+          "timings_ms"
+        ],
+        "title": "AudioClassificationResponse"
+      },
+      "AudioModels": {
+        "properties": {
+          "asr_model": {
+            "type": "string",
+            "title": "Asr Model"
+          },
+          "lid_model": {
+            "type": "string",
+            "title": "Lid Model"
+          },
+          "classifier_model": {
+            "type": "string",
+            "title": "Classifier Model"
+          },
+          "decision_policy": {
+            "type": "string",
+            "title": "Decision Policy",
+            "default": "policy@1"
+          }
+        },
+        "type": "object",
+        "required": [
+          "asr_model",
+          "lid_model",
+          "classifier_model"
+        ],
+        "title": "AudioModels"
+      },
+      "Body_classifications_v1_classifications_post": {
+        "properties": {
+          "audio": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Audio"
+          },
+          "source_kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "own",
+                  "forwarded",
+                  "record",
+                  "file"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Kind"
+          }
+        },
+        "type": "object",
+        "required": [
+          "audio"
+        ],
+        "title": "Body_classifications_v1_classifications_post"
+      },
+      "Body_transcriptions_v1_transcriptions_post": {
+        "properties": {
+          "audio": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Audio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "audio"
+        ],
+        "title": "Body_transcriptions_v1_transcriptions_post"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -366,7 +673,7 @@
           "text"
         ],
         "title": "PredictRequest",
-        "description": "Текст для классификации. В будущем сюда попадёт расшифровка GigaAM.",
+        "description": "Текст для классификации, в том числе расшифровка GigaAM.",
         "examples": [
           {
             "text": "Вам одобрен кредит на 300 000 рублей! Перезвоните по номеру 8-800..."
@@ -501,6 +808,92 @@
         ],
         "title": "Scores",
         "description": "Вероятности классов; сумма равна 1 с точностью до округления."
+      },
+      "TranscriptionResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "transcribed",
+              "not_classified"
+            ],
+            "title": "Status"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "no_speech",
+                  "speech_too_short",
+                  "unsupported_language"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "detected_language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detected Language"
+          },
+          "audio_duration_s": {
+            "type": "number",
+            "title": "Audio Duration S"
+          },
+          "speech_duration_s": {
+            "type": "number",
+            "title": "Speech Duration S"
+          },
+          "transcript": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transcript"
+          },
+          "asr_model": {
+            "type": "string",
+            "title": "Asr Model"
+          },
+          "lid_model": {
+            "type": "string",
+            "title": "Lid Model"
+          },
+          "timings_ms": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Timings Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "reason",
+          "detected_language",
+          "audio_duration_s",
+          "speech_duration_s",
+          "transcript",
+          "asr_model",
+          "lid_model",
+          "timings_ms"
+        ],
+        "title": "TranscriptionResponse"
       },
       "ValidationError": {
         "properties": {

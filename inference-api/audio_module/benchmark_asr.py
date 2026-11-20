@@ -34,12 +34,14 @@ def main() -> None:
     a = ap.parse_args()
 
     from .stt_service import STTService
+
     refs = {}
     if a.refs:
         with open(a.refs, encoding="utf-8") as f:
             refs = {r[0]: r[1] for r in csv.reader(f, delimiter="\t") if len(r) >= 2}
-    files = sorted(p for p in Path(a.audio_dir).iterdir()
-                   if p.suffix.lower() in {".ogg", ".oga", ".opus", ".wav", ".mp3", ".m4a"})
+    files = sorted(
+        p for p in Path(a.audio_dir).iterdir() if p.suffix.lower() in {".ogg", ".oga", ".opus", ".wav", ".mp3", ".m4a"}
+    )
 
     rows, summary = [], []
     for b in a.backends.split(","):
@@ -53,10 +55,21 @@ def main() -> None:
             if w is not None:
                 wers.append(w)
             t_tot, a_tot = t_tot + dt, a_tot + r.duration_s
-            rows.append([svc.backend.name, p.name, r.status, r.reason, round(r.duration_s, 1),
-                         round(dt, 2), None if w is None else round(w, 4), r.text])
-        summary.append((svc.backend.name, len(files),
-                        sum(wers) / len(wers) if wers else None, t_tot / max(a_tot, 1e-9)))
+            rows.append(
+                [
+                    svc.backend.name,
+                    p.name,
+                    r.status,
+                    r.reason,
+                    round(r.duration_s, 1),
+                    round(dt, 2),
+                    None if w is None else round(w, 4),
+                    r.text,
+                ]
+            )
+        summary.append(
+            (svc.backend.name, len(files), sum(wers) / len(wers) if wers else None, t_tot / max(a_tot, 1e-9))
+        )
 
     with open(a.out, "w", encoding="utf-8", newline="") as f:
         w_ = csv.writer(f)
