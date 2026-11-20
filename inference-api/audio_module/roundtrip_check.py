@@ -21,6 +21,9 @@ if __name__ == "__main__":
         for label, text in TEXTS.items():
             meta = tts.synthesize_augmented(text, Path(tmp) / f"{label}.ogg", rng=rng)
             r = asr.transcribe(Path(tmp) / f"{label}.ogg")
-            print(f"[{label}] status={r.status} WER={wer(meta['tts_text'], r.text):.1%} "
-                  f"time={r.timings_ms.get('total')}ms aug=speed{meta['speed']}/snr{meta['snr_db']}/opus{meta['opus_kbps']}k")
+            print(
+                f"[{label}] status={r.status} WER={wer(meta['tts_text'], r.text):.1%} "
+                f"time={r.timings_ms.get('total')}ms "
+                f"aug=speed{meta['speed']}/snr{meta['snr_db']}/opus{meta['opus_kbps']}k"
+            )
             print("   ASR:", r.text)

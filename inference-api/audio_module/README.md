@@ -5,7 +5,7 @@
 - **Онлайн (inference-api):** голосовое из Telegram → текст для классификатора.
 - **Офлайн (обучение):** тексты из `df.csv` → TTS → шум/скорость/Opus → ASR → «шумные» транскрипты для обогащения тренировочного датасета (усложнение кейса).
 
-Выбор моделей согласован с `ConceptAndArchitecture/после ревью/v2` (ADR-14, раздел 4 архитектуры).
+Выбор моделей согласован с концептом v2 (ADR-14, раздел 4 архитектуры).
 
 | Задача | Модель | Статус |
 |---|---|---|
@@ -52,60 +52,39 @@ flowchart TD
   "text": "срочно вы выиграли приз ...",
   "language": "ru", "language_prob_ru": 0.99,
   "duration_s": 12.4, "speech_s": 9.8,
-  "asr_model": "gigaam-v3_e2e_rnnt", "lid_model": "faster-whisper-base",
+  "asr_model": "gigaam-v3-e2e-rnnt", "lid_model": "faster-whisper-base",
   "segments": [{"start_s": 0.4, "end_s": 12.1, "text": "..."}],
   "timings_ms": {"decode": 40, "vad": 120, "lid": 300, "asr": 2100, "total": 2560}
 }
 ```
 
-Исключения (наследники `AudioError`, у каждого есть `.code`): `AudioDecodeError` (`decode_failed`), `AudioTooLongError` (`too_long`). `inference-api` должен превращать их в HTTP 4xx.
-
-Пример вызова из `inference-api` (модели грузятся один раз при старте):
-
-```python
-from fastapi import FastAPI, UploadFile
-from audio_module.stt_service import STTService
-from audio_module.audio_io import AudioError
-import tempfile, shutil
-
-app = FastAPI()
-stt = STTService("gigaam")
-
-@app.post("/v1/classifications")
-async def classify(audio: UploadFile):
-    with tempfile.NamedTemporaryFile(suffix=".ogg") as tmp:
-        shutil.copyfileobj(audio.file, tmp); tmp.flush()
-        try:
-            asr = stt.transcribe(tmp.name)
-        except AudioError as e:
-            return {"status": "error", "reason": e.code}
-    if asr.status != "ok":
-        return {"status": asr.status, "reason": asr.reason, "asr_model": asr.asr_model}
-    # label = classifier.predict(clean_text(asr.text)) ...
-    return {"status": "ok", "text": asr.text}   # + label/scores/confidence
-```
+На границе HTTP ошибки формата, декодирования и длительности возвращаются как 415 или 422.
+При старте API загружает модели один раз. Расшифровка доступна в `POST /v1/transcriptions`,
+а расшифровка и классификация — в `POST /v1/classifications`.
+См. [запуск и форматы запросов](../README.md#аудио-и-распознавание-речи).
 
 ## 3. Запуск
+
+Команды выполняются из `inference-api/` в Python 3.12.
 
 ```bash
 sudo apt install ffmpeg
 pip install -r audio_module/requirements.txt
-pip install git+https://github.com/salute-developers/GigaAM.git
 
 pytest audio_module/tests                      # 11 тестов, тяжёлые модели не нужны
 python -m audio_module.stt_service voice.ogg   # ASR одного файла (JSON)
 python -m audio_module.roundtrip_check         # TTS -> ASR -> WER, проверка всей связки
 python -m audio_module.benchmark_asr --audio-dir samples/ --refs samples/refs.tsv --backends gigaam,whisper
-python -m audio_module.build_tts_dataset --csv Datasets/df.csv --out data/tts_dataset --per-class 200 --transcribe
+python -m audio_module.build_tts_dataset --csv ../Datasets/df.csv --out data/tts_dataset --per-class 200 --transcribe
 ```
 
-Первый запуск скачивает веса (GigaAM, Silero, faster-whisper) — нужен интернет; оценка памяти по архитектуре ≈ 3–4 ГБ RAM.
+Первый запуск скачивает GigaAM и faster-whisper из Hugging Face. Ревизия GigaAM закреплена в коде. Silero VAD поставляется в пакете silero-vad.
 
 ## 4. Результаты тестирования
 
 | Модель | Файлов | WER | RTF (CPU) | Железо |
 |---|---|---|---|---|
-| gigaam-v3_e2e_rnnt | | | | |
+| gigaam-v3-e2e-rnnt | | | | |
 | faster-whisper-large-v3-turbo | | | | |
 
 ## 5. Ограничения и заметки

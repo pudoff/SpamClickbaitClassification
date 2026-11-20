@@ -9,7 +9,7 @@
 ```
 ├── README.md                      ← этот файл: запуск, структура, статус
 ├── MODEL_CARD.md                  ← карточка модели rnn-cnn-lr: метрики, ограничения, риски
-├── compose.yaml                   ← Docker Compose: inference-api + trainer (профиль train)
+├── compose.yaml                   ← API с ASR, trainer (train) и Telegram-бот (telegram)
 ├── .env.example                   ← шаблон настроек (порт, модель, пороги, конфиг LR) → скопировать в .env
 ├── pyproject.toml, poetry.lock    ← Poetry (venv в .venv), настройки ruff и pytest
 ├── .pre-commit-config.yaml        ← ruff check + ruff format для inference-api/ и Datasets/scripts/
@@ -36,7 +36,7 @@
 ├── Reports/                       ← снимок манифеста ансамбля для Model Card, BPMN-диаграмма
 ├── Переобучение.bpmn              ← BPMN процесса переобучения
 ├── ConceptAndArchitecture/
-│   ├── до ревью/                  ← версия 1 (история): docx, pptx, прототип audio_module
+│   ├── до ревью/                  ← версия 1 (история): docx, pptx
 │   └── после ревью/               ← версия 2 — актуальный концепт, архитектура, OpenAPI-контракт
 └── CasesAndTeams/                 ← описание кейсов и состав команд курса
 ```
@@ -73,7 +73,7 @@ docker compose --profile train run --rm trainer python -m training.train --data=
 
 ```bash
 docker compose up -d --build inference-api
-docker compose ps            # через 10–20 с (загрузка torch): Up … (healthy)
+docker compose ps            # после загрузки моделей: Up … (healthy)
 ```
 
 Откройте **http://localhost:8000/docs** — Swagger UI, где можно вызвать все эндпоинты (порт задаётся `API_PORT` в `.env`).
@@ -81,6 +81,8 @@ docker compose ps            # через 10–20 с (загрузка torch): U
 | Эндпоинт | Что делает |
 |---|---|
 | `POST /predict` | `{"text": "...", "threshold": 0.6}` → `status`, `label`, `confidence`, `scores` |
+| `POST /v1/transcriptions` | Файл в multipart-поле `audio` → расшифровка русской речи |
+| `POST /v1/classifications` | Файл в multipart-поле `audio` → расшифровка и результат классификации |
 | `GET /healthcheck` | Сервис жив и модель загружена (иначе ответ 503 с причиной) |
 | `GET /model-info` | Версия модели, дата обучения, метрики, конфигурация, пороги |
 
@@ -91,11 +93,31 @@ docker compose logs -f inference-api                   # логи
 docker compose down                                    # остановить
 ```
 
+Первый старт ASR скачивает веса GigaAM и faster-whisper в том `asr-cache`.
+Для запуска только текстового API задайте `ASR_ENABLED=0`.
+
+### Демо в Telegram
+
+Скопируйте `.env.example` в `.env`, заполните `TELEGRAM_BOT_TOKEN` токеном
+от BotFather и проверьте `MODEL_FILE`. Если используется локальный комплект
+TF-IDF/LR из `inference-api/models/`, задайте `MODEL_FILE=model.joblib`.
+
+```powershell
+docker compose --profile telegram up -d --build
+docker compose logs -f inference-api bot
+```
+
+В личном чате с ботом отправьте `/start` или `/help`, затем голосовое через
+микрофон Telegram, аудиофайл, текстовое сообщение или `.txt` в UTF-8.
+Результат придёт в тот же чат. Для аудио бот также покажет расшифровку.
+Распознавание можно [проверить через Swagger и curl](inference-api/README.md#аудио-и-распознавание-речи).
+
 ### 4. Проверки (тесты и линтеры)
 
 ```bash
 docker compose build inference-api                                    # после правок кода: код копируется в образ
-docker compose run --rm inference-api pytest -q -p no:cacheprovider   # тесты сервиса: 82 passed, 2 skipped
+docker compose run --rm inference-api pytest -q -p no:cacheprovider   # тесты сервиса
+docker compose run --rm inference-api pytest -q -p no:cacheprovider audio_module/tests   # тесты ASR
 docker compose run --rm inference-api ruff check .                    # линтер
 docker compose run --rm inference-api ruff format --check .           # формат
 docker compose run --rm -v ./Datasets:/data:ro -w /data/scripts inference-api python -m pytest -q -p no:cacheprovider   # тесты Datasets/scripts
@@ -103,7 +125,7 @@ docker compose run --rm -v ./Datasets:/data:ro -w /data/scripts inference-api py
 docker compose run --rm -v ./Datasets:/data:ro -v ./inference-api/models:/artifacts:ro -e TEST_MODEL_DIR=/artifacts -w /data/outputs inference-api python -m pytest -q -p no:cacheprovider test_model.py
 ```
 
-Два пропущенных теста сервиса сверяют структуру манифеста с эталоном в `Reports/`, которого нет внутри образа. С примонтированным репозиторием они выполняются: `docker compose run --rm -v .:/repo -w /repo inference-api python -m pytest -q -p no:cacheprovider` (84 passed).
+Два теста сервиса сверяют структуру манифеста с эталоном в `Reports/`, которого нет внутри образа. Для их выполнения примонтируйте репозиторий: `docker compose run --rm -v .:/repo -w /repo inference-api python -m pytest -q -p no:cacheprovider`.
 
 `test_model.py` на exp4 от 24.10.2026: 3 passed, 3 failed. Падения — найденные слабые места модели, а не ошибки кода: добавленная ссылка меняет 16 % предсказаний (порог 10 %), очень длинный повторённый кликбейт уходит в «обычное», на коротких репликах macro-F1 0.56 (70 % от общего, требуется 85 %).
 
@@ -203,9 +225,9 @@ poetry run python -m pytest -q Datasets/scripts/test_dataset_filtering.py Datase
 | Воспроизводимое обучение в контейнере (`trainer`) | ✅ конфигурации из ноутбука: baseline, exp1–exp5 |
 | Рефакторинг `inference-api` без изменения поведения | ✅ общие модули (`labels`, `artifacts`, `logs`, `training/data`, `metrics`), экспорт по шагам; снимки контракта и вероятностей в тестах |
 | Исправления после рефакторинга | ✅ маскирование ссылок КАПСОМ (`clean-text-v2`), `httpx2` для TestClient, загрузка моделей через joblib, `.gitignore`/`.dockerignore` |
-| ASR (GigaAM-v3 + Silero VAD + определение языка) | ⏳ прототип `audio_module` в «до ревью», в сервис не подключён |
-| Аудио-API `/v1/classifications` по контракту `04-service-contract.openapi.yaml` | ⏳ не начато |
-| Telegram-бот (aiogram) | ⏳ не начато |
+| ASR (GigaAM-v3 + Silero VAD + определение языка) | ✅ `/v1/transcriptions` и `/v1/classifications` в inference-api |
+| Аудио-API `/v1/classifications` | ✅ учебное демо, полный целевой контракт описан в `04-service-contract.openapi.yaml` |
+| Telegram-бот (aiogram) | ✅ учебное демо с `/start`, `/help` и приёмом голоса, аудиофайлов, текста и `.txt` |
 | TTS-обогащение (Piper), калибровка, holdout реальных голосовых | ⏳ не начато |
 
 Важно: метрики модели на `df.csv` **завышены** (классы взяты из разных источников, сплит случайный; ревью, R-36). Итоговое качество проверяется на реальных голосовых (концепт v2, `05-mlops-and-validation.md`).

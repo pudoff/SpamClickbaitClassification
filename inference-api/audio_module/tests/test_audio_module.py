@@ -1,8 +1,13 @@
 import numpy as np
 import pytest
 
-from audio_module.audio_io import (AudioDecodeError, AudioTooLongError, decode_audio,
-                                   encode_opus, probe_duration, write_wav)
+from audio_module.audio_io import (
+    AudioDecodeError,
+    AudioTooLongError,
+    decode_audio,
+    encode_opus,
+    probe_duration,
+)
 from audio_module.benchmark_asr import wer
 from audio_module.schemas import ASRConfig
 from audio_module.stt_service import STTService
@@ -25,19 +30,29 @@ def ogg(tmp_path):
 
 
 class FakeVAD:
-    def __init__(self, ts): self.ts = ts
-    def detect(self, wave): return self.ts
+    def __init__(self, ts):
+        self.ts = ts
+
+    def detect(self, wave):
+        return self.ts
 
 
 class FakeLID:
     name = "fake-lid"
-    def __init__(self, p_ru): self.p = p_ru
-    def detect(self, wave): return ("ru" if self.p > .5 else "en"), self.p
+
+    def __init__(self, p_ru):
+        self.p = p_ru
+
+    def detect(self, wave):
+        return ("ru" if self.p > 0.5 else "en"), self.p
 
 
 class FakeASR:
     name = "fake-asr"
-    def __init__(self): self.calls = 0
+
+    def __init__(self):
+        self.calls = 0
+
     def transcribe_file(self, path):
         self.calls += 1
         return f"кусок {self.calls}"
@@ -82,7 +97,7 @@ def test_unsupported_language(ogg):
 def test_ok_and_contract(ogg):
     r = svc([(0.0, 2.0), (2.5, 5.0)]).transcribe(ogg)
     assert r.status == "ok" and r.reason is None
-    assert r.text == "кусок 1" and r.asr_model == "fake-asr"   # оба куска влезли в один сегмент <=20 с
+    assert r.text == "кусок 1" and r.asr_model == "fake-asr"  # оба куска влезли в один сегмент <=20 с
     d = r.to_dict()
     for k in ("status", "reason", "text", "language", "duration_s", "asr_model", "lid_model", "timings_ms", "segments"):
         assert k in d

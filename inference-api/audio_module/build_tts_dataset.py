@@ -30,7 +30,7 @@ def main() -> None:
     out = Path(a.out)
     (out / "audio").mkdir(parents=True, exist_ok=True)
     meta_path = out / "meta.jsonl"
-    done = {json.loads(l)["id"] for l in meta_path.open(encoding="utf-8")} if meta_path.exists() else set()
+    done = {json.loads(line)["id"] for line in meta_path.open(encoding="utf-8")} if meta_path.exists() else set()
 
     df = pd.read_csv(a.csv)
     df["clean"] = df[TEXT_COL].astype(str).map(sanitize_text)
@@ -42,6 +42,7 @@ def main() -> None:
     asr = None
     if a.transcribe:
         from .stt_service import STTService
+
         asr = STTService(a.asr)
 
     with meta_path.open("a", encoding="utf-8") as f:
@@ -59,12 +60,23 @@ def main() -> None:
                 except Exception as e:  # плохой текст не должен ронять генерацию
                     print(f"skip {row_idx}: {e}")
                     continue
-                rec.update(id=uid, file=f"audio/{uid}.ogg", label=int(label), label_name=name,
-                           source_row=int(row_idx), split="train", synthetic=True)
+                rec.update(
+                    id=uid,
+                    file=f"audio/{uid}.ogg",
+                    label=int(label),
+                    label_name=name,
+                    source_row=int(row_idx),
+                    split="train",
+                    synthetic=True,
+                )
                 if asr is not None:
                     r = asr.transcribe(path)
-                    rec.update(asr_text=r.text, asr_model=r.asr_model, asr_status=r.status,
-                               wer=round(wer(rec["tts_text"], r.text), 4) if r.status == "ok" else None)
+                    rec.update(
+                        asr_text=r.text,
+                        asr_model=r.asr_model,
+                        asr_status=r.status,
+                        wer=round(wer(rec["tts_text"], r.text), 4) if r.status == "ok" else None,
+                    )
                 f.write(json.dumps(rec, ensure_ascii=False) + "\n")
                 f.flush()
     print("готово:", meta_path)

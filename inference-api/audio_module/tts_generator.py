@@ -5,7 +5,7 @@ import subprocess
 import tempfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Optional, Protocol
+from typing import Protocol
 
 import numpy as np
 
@@ -19,9 +19,11 @@ def sanitize_text(text: str, min_words: int = 3) -> str:
     def num(m: re.Match) -> str:
         try:
             from num2words import num2words
+
             return " " + num2words(int(m.group()), lang="ru") + " "
         except Exception:
             return " "
+
     t = re.sub(r"\d{1,9}", num, str(text))
     t = re.sub(r"[^А-Яа-яЁё\s.,!?:\-]", " ", t)
     t = re.sub(r"\s+", " ", t).strip()
@@ -43,16 +45,19 @@ class SileroBackend:
     sample_rate = 24_000
     speakers = SILERO_SPEAKERS
 
-    def __init__(self, device: Optional[str] = None):
+    def __init__(self, device: str | None = None):
         import torch
+
         self.device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
-        self.model, _ = torch.hub.load("snakers4/silero-models", "silero_tts",
-                                       language="ru", speaker="v4_ru", trust_repo=True)
+        self.model, _ = torch.hub.load(
+            "snakers4/silero-models", "silero_tts", language="ru", speaker="v4_ru", trust_repo=True
+        )
         self.model.to(self.device)
 
     def synth(self, text: str, speaker: str) -> np.ndarray:
-        audio = self.model.apply_tts(text=text, speaker=speaker, sample_rate=self.sample_rate,
-                                     put_accent=True, put_yo=True)
+        audio = self.model.apply_tts(
+            text=text, speaker=speaker, sample_rate=self.sample_rate, put_accent=True, put_yo=True
+        )
         return audio.detach().cpu().numpy().astype(np.float32)
 
 
@@ -67,8 +72,13 @@ class PiperBackend:
     def synth(self, text: str, speaker: str) -> np.ndarray:
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "o.wav"
-            subprocess.run([self.piper_bin, "--model", self.voices[speaker], "--output_file", str(out)],
-                           input=text.encode(), check=True, capture_output=True, timeout=120)
+            subprocess.run(
+                [self.piper_bin, "--model", self.voices[speaker], "--output_file", str(out)],
+                input=text.encode(),
+                check=True,
+                capture_output=True,
+                timeout=120,
+            )
             wave, self.sample_rate = read_wav(out)
         return wave
 
@@ -76,7 +86,7 @@ class PiperBackend:
 @dataclass
 class AugParams:
     speed: float
-    snr_db: Optional[float]
+    snr_db: float | None
     opus_kbps: int
 
 
@@ -89,7 +99,7 @@ def sample_params(rng: np.random.Generator) -> AugParams:
 
 
 def add_noise(wave: np.ndarray, snr_db: float, rng: np.random.Generator) -> np.ndarray:
-    power = float(np.mean(wave ** 2)) + 1e-12
+    power = float(np.mean(wave**2)) + 1e-12
     noise = rng.normal(0.0, np.sqrt(power / 10 ** (snr_db / 10)), size=wave.shape)
     return np.clip(wave + noise.astype(np.float32), -1.0, 1.0)
 
@@ -99,16 +109,18 @@ class TTSAugmenter:
         self.backend = SileroBackend() if backend == "silero" else backend
         self.speaker = speaker
 
-    def text_to_speech(self, text: str, output_audio_path: str = "generated_spam.wav",
-                       speaker: Optional[str] = None) -> str:
+    def text_to_speech(
+        self, text: str, output_audio_path: str = "generated_spam.wav", speaker: str | None = None
+    ) -> str:
         clean = sanitize_text(text)
         if not clean:
             raise ValueError("после очистки текст пуст или короче 3 слов")
         wave = self.backend.synth(clean, speaker or self.speaker)
         return write_wav(output_audio_path, wave, self.backend.sample_rate)
 
-    def synthesize_augmented(self, text: str, out_path: str | Path, speaker: Optional[str] = None,
-                             rng: Optional[np.random.Generator] = None) -> dict:
+    def synthesize_augmented(
+        self, text: str, out_path: str | Path, speaker: str | None = None, rng: np.random.Generator | None = None
+    ) -> dict:
         rng = rng or np.random.default_rng()
         clean = sanitize_text(text)
         if not clean:
