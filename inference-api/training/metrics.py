@@ -11,12 +11,12 @@ def evaluate(y_true: np.ndarray, y_pred: np.ndarray, *, per_class: bool = True, 
     per_class=False — три сводные метрики экспорта ансамбля: accuracy, f1_macro, f1_weighted.
     digits=None — без округления.
     """
-    f1_macro = f1_score(y_true, y_pred, average="macro")
-    f1_weighted = f1_score(y_true, y_pred, average="weighted")
+    f1_macro = f1_score(y_true, y_pred, average="macro", zero_division=0)
+    f1_weighted = f1_score(y_true, y_pred, average="weighted", zero_division=0)
     accuracy = accuracy_score(y_true, y_pred)
     if per_class:
         labels = list(CLASS_IDS)
-        f1 = f1_score(y_true, y_pred, average=None, labels=labels)
+        f1 = f1_score(y_true, y_pred, average=None, labels=labels, zero_division=0)
         precision = precision_score(y_true, y_pred, average=None, labels=labels, zero_division=0)
         recall = recall_score(y_true, y_pred, average=None, labels=labels, zero_division=0)
         metrics = {"f1_macro": f1_macro, "f1_weighted": f1_weighted, "accuracy": accuracy}

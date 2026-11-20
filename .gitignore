@@ -25,6 +25,7 @@ Datasets/outputs/*.pkl
 Datasets/outputs/*.bak_*
 *.pkl
 Datasets/mlruns/
+Datasets/voice/
 
 # Артефакты моделей в любом месте (веса, пайплайны sklearn); уже отслеживаемые файлы это не затрагивает
 *.pt

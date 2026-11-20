@@ -21,6 +21,7 @@ from app.schemas import (
     AudioModels,
     HealthResponse,
     ModelInfo,
+    Policy,
     PredictRequest,
     PredictResponse,
     Scores,
@@ -74,9 +75,10 @@ def build_model_info(model: LoadedModel, settings: Settings) -> ModelInfo:
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings.from_env()
 
-    def classify(body: PredictRequest, model: LoadedModel) -> PredictResponse:
+    def classify(body: PredictRequest, model: LoadedModel, policy: Policy | None = None) -> PredictResponse:
         scores = model.predict_proba(body.text)
-        decision = decide(scores, settings.tau, settings.tau_spam, body.threshold)
+        tau, tau_spam = (policy.tau, policy.tau_spam) if policy else (settings.tau, settings.tau_spam)
+        decision = decide(scores, tau, tau_spam, body.threshold)
         return PredictResponse(**asdict(decision), scores=Scores(**scores), model_version=model.model_version)
 
     @asynccontextmanager
@@ -144,7 +146,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         prediction = None
         if speech.transcript is not None:
             classify_started = perf_counter()
-            prediction = classify(PredictRequest(text=speech.transcript), model)
+            prediction = classify(PredictRequest(text=speech.transcript), model, model.voice_policy)
             timings["classify"] = int((perf_counter() - classify_started) * 1000)
         timings["total"] = int((perf_counter() - started) * 1000)
         request_id = x_request_id or uuid4().hex

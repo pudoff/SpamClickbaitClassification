@@ -1,3 +1,4 @@
+import json
 from dataclasses import replace
 from pathlib import Path
 from unittest.mock import Mock
@@ -53,6 +54,18 @@ def test_audio_classification_reuses_text_policy(audio_client):
     assert raw.json()["status"] == "transcribed"
     assert raw.json()["transcript"] == TRANSCRIPT
     assert len(paths) == 2 and all(not path.exists() for path in paths)
+
+
+def test_audio_uses_calibrated_policy_from_model_metadata(audio_settings, monkeypatch):
+    config = {"voice_policy": {"tau": 0.0, "tau_spam": 0.0}}
+    audio_settings.meta_path.write_text(json.dumps({"config": config}), encoding="utf-8")
+    asr = Mock()
+    asr.transcribe.return_value = ASRResult("ok", None, TRANSCRIPT, "ru")
+    monkeypatch.setattr("app.main.load_stt", lambda _: asr)
+    with TestClient(create_app(replace(audio_settings, tau=1.0, tau_spam=1.0))) as client:
+        assert client.get("/model-info").json()["config"]["voice_policy"] == config["voice_policy"]
+        assert client.post("/predict", json={"text": TRANSCRIPT}).json()["status"] == "uncertain"
+        assert client.post("/v1/classifications", files=UPLOAD).json()["status"] == "classified"
 
 
 @pytest.mark.parametrize("reason", ["no_speech", "speech_too_short", "unsupported_language"])

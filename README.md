@@ -228,6 +228,6 @@ poetry run python -m pytest -q Datasets/scripts/test_dataset_filtering.py Datase
 | ASR (GigaAM-v3 + Silero VAD + определение языка) | ✅ `/v1/transcriptions` и `/v1/classifications` в inference-api |
 | Аудио-API `/v1/classifications` | ✅ учебное демо, полный целевой контракт описан в `04-service-contract.openapi.yaml` |
 | Telegram-бот (aiogram) | ✅ учебное демо с `/start`, `/help` и приёмом голоса, аудиофайлов, текста и `.txt` |
-| TTS-обогащение (Piper), калибровка, holdout реальных голосовых | ⏳ не начато |
+| [TTS-обогащение, калибровка и проверка на голосовых](inference-api/audio_module/README.md#5-эксперимент-на-голосовых) | Piper → GigaAM проверен на 36 синтетических записях. Для итоговой оценки нужны `voice-calib` и `voice-holdout` |
 
 Важно: метрики модели на `df.csv` **завышены** (классы взяты из разных источников, сплит случайный; ревью, R-36). Итоговое качество проверяется на реальных голосовых (концепт v2, `05-mlops-and-validation.md`).
