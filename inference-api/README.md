@@ -123,6 +123,7 @@ Hugging Face для загрузки весов в том `asr-cache`. Для з
 uvicorn. Минимальное окружение в каталоге `inference-api/` рассчитано на текст.
 
 Оба запроса принимают multipart-поле `audio` с файлом до 20 МиБ и 300 секунд.
+Лимит проверяется и для всего тела запроса, включая потоковую загрузку.
 Форматы проверяются по содержимому: OGG/Opus, M4A/AAC, MP3 и WAV/PCM.
 Откройте `/docs` или выполните из PowerShell:
 
@@ -146,6 +147,17 @@ curl.exe -F "audio=@voice.ogg" http://127.0.0.1:8000/v1/classifications
 доступ к API на хосте ограничен адресом 127.0.0.1.
 
 Запуск Telegram-бота описан в [корневом README](../README.md#демо-в-telegram).
+
+Тесты ASR и бота запускаются из корня репозитория:
+
+```powershell
+docker compose --profile telegram build inference-api bot
+docker compose run --rm inference-api python -m pytest -q -p no:cacheprovider audio_module/tests
+docker compose --profile telegram run --rm --no-deps bot python -m unittest discover -s bot/tests -v
+```
+
+В тестах аудио создаётся локально, а бот получает тестовые обновления Telegram
+и делает HTTP-запросы к тестовому серверу. Токен Telegram и загрузка весов не нужны.
 
 В `.env` укажите:
 

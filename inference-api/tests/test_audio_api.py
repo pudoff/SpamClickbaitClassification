@@ -15,12 +15,17 @@ UPLOAD = {"audio": ("проверка.ogg", b"test audio")}
 
 
 @pytest.fixture
-def audio_client(tmp_path, make_settings, toy_lr, monkeypatch):
+def audio_settings(tmp_path, make_settings, toy_lr):
     artifact = tmp_path / "model.joblib"
     joblib.dump(toy_lr, artifact)
+    return replace(make_settings(artifact), asr_enabled=True)
+
+
+@pytest.fixture
+def audio_client(audio_settings, monkeypatch):
     asr = Mock()
     monkeypatch.setattr("app.main.load_stt", lambda _: asr)
-    with TestClient(create_app(replace(make_settings(artifact), asr_enabled=True))) as client:
+    with TestClient(create_app(audio_settings)) as client:
         yield client, asr
 
 
@@ -85,3 +90,69 @@ def test_audio_upload_size_checked_before_asr(audio_client, monkeypatch):
     response = client.post("/v1/transcriptions", files=UPLOAD)
     assert response.status_code == 413
     asr.transcribe.assert_not_called()
+
+
+@pytest.mark.parametrize("endpoint", ["/v1/transcriptions", "/v1/classifications"])
+def test_oversized_content_length_is_rejected_before_body_is_read(audio_client, monkeypatch, endpoint):
+    client, asr = audio_client
+    monkeypatch.setattr("app.audio.MAX_AUDIO_BYTES", 10)
+    monkeypatch.setattr("app.audio.MAX_MULTIPART_OVERHEAD", 0)
+
+    def body():
+        pytest.fail("Сервис попытался прочитать запрос, который превышает лимит")
+        yield b""
+
+    result = client.post(endpoint, headers={"Content-Length": "11"}, content=body())
+    assert result.status_code == 413
+    assert result.json() == {"detail": "payload_too_large"}
+    asr.transcribe.assert_not_called()
+
+
+def test_multipart_body_without_content_length_is_also_limited(audio_client, monkeypatch):
+    client, asr = audio_client
+    monkeypatch.setattr("app.audio.MAX_AUDIO_BYTES", 32)
+    monkeypatch.setattr("app.audio.MAX_MULTIPART_OVERHEAD", 128)
+    parts = iter(
+        [
+            b'--limit\r\nContent-Disposition: form-data; name="audio"; filename="input.bin"\r\n\r\n',
+            b"x" * 100,
+            b"\r\n--limit--\r\n",
+        ]
+    )
+    result = client.post(
+        "/v1/classifications", headers={"Content-Type": "multipart/form-data; boundary=limit"}, content=parts
+    )
+    assert "content-length" not in result.request.headers
+    assert result.status_code == 413
+    assert result.json() == {"detail": "payload_too_large"}
+    asr.transcribe.assert_not_called()
+
+
+def test_asr_startup_failure_keeps_text_available(audio_settings, monkeypatch):
+    monkeypatch.setattr("app.main.load_stt", Mock(side_effect=RuntimeError("сбой загрузки ASR")))
+    with TestClient(create_app(audio_settings)) as client:
+        assert client.get("/healthcheck").status_code == 200
+        assert client.post("/predict", json={"text": TRANSCRIPT}).status_code == 200
+        for endpoint in ("/v1/transcriptions", "/v1/classifications"):
+            response = client.post(endpoint, files=UPLOAD)
+            assert response.status_code == 503
+            assert response.json() == {"detail": "asr_unavailable"}
+
+
+def test_transcription_available_without_classifier(audio_settings, tmp_path, monkeypatch):
+    asr = Mock()
+    asr.transcribe.return_value = ASRResult("ok", None, TRANSCRIPT, "ru")
+    monkeypatch.setattr("app.main.load_stt", lambda _: asr)
+    with TestClient(create_app(replace(audio_settings, model_path=tmp_path / "missing.joblib"))) as client:
+        assert client.post("/v1/classifications", files=UPLOAD).status_code == 503
+        asr.transcribe.assert_not_called()
+        assert client.post("/v1/transcriptions", files=UPLOAD).json()["transcript"] == TRANSCRIPT
+
+
+def test_next_audio_request_runs_after_asr_failure(audio_client):
+    client, asr = audio_client
+    asr.transcribe.side_effect = [RuntimeError("сбой ASR"), ASRResult("ok", None, TRANSCRIPT, "ru")]
+    assert client.post("/v1/transcriptions", files=UPLOAD).status_code == 503
+    response = client.post("/v1/transcriptions", files=UPLOAD)
+    assert response.status_code == 200
+    assert response.json()["transcript"] == TRANSCRIPT

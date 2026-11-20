@@ -1,18 +1,53 @@
 """Ограничения загрузки и преобразование результата ASR для HTTP."""
 
 import logging
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from fastapi import HTTPException, Request, UploadFile
+from fastapi import HTTPException, Request, Response, UploadFile
+from fastapi.routing import APIRoute
 from pydantic import ValidationError
+from starlette.types import Message
 
 from app.schemas import PredictRequest, TranscriptionResponse
 from audio_module.audio_io import AudioDecodeError, AudioTooLongError, UnsupportedAudioError
 from audio_module.stt_service import STTService
 
 MAX_AUDIO_BYTES = 20 * 1024 * 1024
+MAX_MULTIPART_OVERHEAD = 64 * 1024
 logger = logging.getLogger("inference-api")
+
+
+class AudioUploadRoute(APIRoute):
+    """Ограничивает тело запроса до разбора multipart, включая потоковую загрузку."""
+
+    def get_route_handler(self) -> Callable[[Request], Awaitable[Response]]:
+        handle = super().get_route_handler()
+
+        async def bounded_upload(request: Request) -> Response:
+            max_body_bytes = MAX_AUDIO_BYTES + MAX_MULTIPART_OVERHEAD
+            try:
+                declared_size = int(request.headers.get("content-length", "0"))
+            except ValueError as exc:
+                raise HTTPException(400, detail="invalid_content_length") from exc
+            if declared_size > max_body_bytes:
+                raise HTTPException(413, detail="payload_too_large")
+
+            received = 0
+
+            async def receive() -> Message:
+                nonlocal received
+                message = await request.receive()
+                if message["type"] == "http.request":
+                    received += len(message.get("body", b""))
+                    if received > max_body_bytes:
+                        raise HTTPException(413, detail="payload_too_large")
+                return message
+
+            return await handle(Request(request.scope, receive))
+
+        return bounded_upload
 
 
 def load_stt(num_threads: int) -> STTService:

@@ -8,10 +8,10 @@ from time import perf_counter
 from typing import Annotated, Literal
 from uuid import uuid4
 
-from fastapi import FastAPI, Form, Header, HTTPException, Request, Response, UploadFile, status
+from fastapi import APIRouter, FastAPI, Form, Header, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import JSONResponse, RedirectResponse
 
-from app.audio import load_stt, transcribe
+from app.audio import AudioUploadRoute, load_stt, transcribe
 from app.config import Settings
 from app.labels import LABELS
 from app.logs import configure_logging
@@ -112,6 +112,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.settings = settings
+    audio = APIRouter(route_class=AudioUploadRoute)
 
     @app.get("/", include_in_schema=False)
     def root() -> RedirectResponse:
@@ -122,12 +123,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         """Инференс модели: JSON на входе, предсказание на выходе."""
         return classify(body, get_model(request))
 
-    @app.post("/v1/transcriptions", tags=["audio"], responses=AUDIO_ERRORS)
+    @audio.post("/v1/transcriptions", tags=["audio"], responses=AUDIO_ERRORS)
     def transcriptions(audio: UploadFile, request: Request) -> TranscriptionResponse:
         """Распознать русскую речь из файла без классификации."""
         return transcribe(audio, request)
 
-    @app.post("/v1/classifications", tags=["audio"], responses=AUDIO_ERRORS)
+    @audio.post("/v1/classifications", tags=["audio"], responses=AUDIO_ERRORS)
     def classifications(
         audio: UploadFile,
         request: Request,
@@ -164,6 +165,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             ),
             timings_ms=timings,
         )
+
+    app.include_router(audio)
 
     @app.get(
         "/healthcheck",

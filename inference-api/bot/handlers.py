@@ -1,5 +1,6 @@
 """Приём сообщений Telegram, запрос в inference-api и ответ в чате."""
 
+from io import BytesIO
 from pathlib import PurePath
 
 from aiogram import Bot, F, Router
@@ -37,6 +38,21 @@ API_ERRORS = {
 }
 UNAVAILABLE = "Сервис проверки временно недоступен. Попробуйте позже."
 INVALID_TEXT = "Отправьте текст с буквами длиной до 20 000 символов."
+
+
+class DownloadTooLarge(Exception):
+    """Скачивание превысило лимит для выбранного типа файла."""
+
+
+class LimitedDownload(BytesIO):
+    def __init__(self, limit: int):
+        super().__init__()
+        self.limit = limit
+
+    def write(self, data: bytes) -> int:
+        if self.tell() + len(data) > self.limit:
+            raise DownloadTooLarge
+        return super().write(data)
 
 
 async def send_result(message: Message, response: dict) -> None:
@@ -111,17 +127,14 @@ async def check_file(
         await message.answer(API_ERRORS["audio_too_long"])
         return
     try:
-        download = await bot.download(media, timeout=30)
+        with LimitedDownload(limit) as download:
+            await bot.download(media, destination=download, timeout=30)
+            data = download.getvalue()
+    except DownloadTooLarge:
+        await message.answer(too_large)
+        return
     except (ClientError, TelegramAPIError, TimeoutError):
         await message.answer("Не удалось скачать файл из Telegram. Попробуйте отправить его ещё раз.")
-        return
-    if download is None:
-        await message.answer("Не удалось скачать файл из Telegram.")
-        return
-    with download:
-        data = download.read(limit + 1)
-    if len(data) > limit:
-        await message.answer(too_large)
         return
     if is_text:
         try:
