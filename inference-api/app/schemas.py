@@ -14,7 +14,7 @@ _LETTER_RE = re.compile(r"[a-zA-Zа-яА-ЯёЁ]")
 
 
 class PredictRequest(BaseModel):
-    """Текст для классификации. В будущем сюда попадёт расшифровка GigaAM."""
+    """Текст для классификации, в том числе расшифровка GigaAM."""
 
     model_config = ConfigDict(
         extra="forbid",
@@ -72,6 +72,28 @@ class HealthResponse(BaseModel):
     model_loaded: bool
     model_version: str | None = None
     detail: str | None = None
+
+
+class AudioModels(BaseModel):
+    asr_model: str
+    lid_model: str
+    classifier_model: str
+    decision_policy: str = "policy@1"
+
+
+class AudioClassificationResponse(BaseModel):
+    request_id: str
+    status: Literal["classified", "uncertain", "not_classified"]
+    label: Label | None = None
+    reason: Literal["low_confidence", "no_speech", "speech_too_short", "unsupported_language"] | None
+    confidence: Probability | None = None
+    scores: Scores | None = None
+    detected_language: str | None
+    audio_duration_s: float
+    speech_duration_s: float
+    transcript: str | None
+    models: AudioModels
+    timings_ms: dict[str, int]
 
 
 class Metrics(BaseModel):

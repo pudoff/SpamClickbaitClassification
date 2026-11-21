@@ -32,6 +32,7 @@ class Settings:
     tau_spam: float = DEFAULT_TAU_SPAM
     # Потоки torch для ансамбля; на LR не влияет
     torch_num_threads: int = DEFAULT_TORCH_THREADS
+    asr_enabled: bool = False
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -43,4 +44,5 @@ class Settings:
             tau=_unit_float("TAU", DEFAULT_TAU),
             tau_spam=_unit_float("TAU_SPAM", DEFAULT_TAU_SPAM),
             torch_num_threads=_positive_int("TORCH_NUM_THREADS", DEFAULT_TORCH_THREADS),
+            asr_enabled=os.getenv("ASR_ENABLED", "0") == "1",
         )
