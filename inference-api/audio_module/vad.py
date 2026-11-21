@@ -1,0 +1,43 @@
+from __future__ import annotations
+
+import numpy as np
+import torch
+from silero_vad import get_speech_timestamps, load_silero_vad
+
+from .schemas import ASRConfig
+
+
+def merge_segments(ts: list[tuple[float, float]], max_len: float = 20.0) -> list[tuple[float, float]]:
+    pieces: list[tuple[float, float]] = []
+    for s, e in ts:
+        while e - s > max_len:
+            pieces.append((s, s + max_len))
+            s += max_len
+        if e > s:
+            pieces.append((s, e))
+    out: list[tuple[float, float]] = []
+    for s, e in pieces:
+        if out and e - out[-1][0] <= max_len:
+            out[-1] = (out[-1][0], e)
+        else:
+            out.append((s, e))
+    return out
+
+
+class SileroVAD:
+    def __init__(self, cfg: ASRConfig | None = None):
+        self.cfg = cfg or ASRConfig()
+        self.model = load_silero_vad()
+
+    def detect(self, wave: np.ndarray) -> list[tuple[float, float]]:
+        c = self.cfg
+        ts = get_speech_timestamps(
+            torch.from_numpy(wave),
+            self.model,
+            sampling_rate=c.sample_rate,
+            threshold=c.vad_threshold,
+            min_speech_duration_ms=c.vad_min_speech_ms,
+            min_silence_duration_ms=c.vad_min_silence_ms,
+            max_speech_duration_s=c.max_chunk_s,
+        )
+        return [(t["start"] / c.sample_rate, t["end"] / c.sample_rate) for t in ts]

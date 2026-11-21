@@ -3,7 +3,7 @@ name = "spam-clickbait-classification"
 version = "0.1.0"
 description = "Сlassification API for spam and clickbait"
 requires-python = ">=3.12,<3.13"
-dependencies = ["fastapi (==0.142.2)", "uvicorn[standard] (==0.54.0)", "pydantic (==2.13.5)", "scikit-learn (==1.8.0)", "joblib (==1.6.0)", "numpy (>=1.24,<2.4)", "torch (==2.10.0)"]
+dependencies = ["fastapi (==0.142.2)", "uvicorn[standard] (==0.54.0)", "pydantic (==2.13.5)", "scikit-learn (==1.8.0)", "joblib (==1.6.0)", "numpy (>=1.24,<2.4)", "torch (==2.10.0)", "python-multipart (==0.0.34)"]
 
 [tool.poetry]
 package-mode = false
@@ -15,6 +15,9 @@ priority = "explicit"
 
 [tool.poetry.dependencies]
 torch = {source = "pytorch-cpu"}
+
+[tool.poetry.group.speech.dependencies]
+torchaudio = {source = "pytorch-cpu"}
 [tool.pytest.ini_options]
 testpaths = ["inference-api/tests"]
 pythonpath = ["inference-api"]
@@ -36,9 +39,17 @@ select = ["E", "F", "I", "B", "UP"]
 
 [tool.ruff.lint.isort]
 # Пакеты inference-api; совпадает с inference-api/pyproject.toml.
-known-first-party = ["app", "training", "tests"]
+known-first-party = ["app", "audio_module", "bot", "training", "tests"]
 
 [dependency-groups]
+speech = [
+    "faster-whisper==1.2.1",
+    "gigaam @ https://github.com/salute-developers/GigaAM/archive/7447938d791c4f3e643386ee22c33777004293a5.tar.gz",
+    "huggingface-hub==0.36.2",
+    "silero-vad==6.2.3",
+    "torchaudio==2.10.0",
+]
+bot = ["aiogram==3.33.0"]
 training = [
     "pandas (==2.3.3)"
 ]

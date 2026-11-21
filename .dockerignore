@@ -8,6 +8,10 @@
 !inference-api/pyproject.toml
 !inference-api/app/
 !inference-api/app/**
+!inference-api/audio_module/
+!inference-api/audio_module/**
+!inference-api/bot/
+!inference-api/bot/**
 !inference-api/training/
 !inference-api/training/**
 !inference-api/tests/
